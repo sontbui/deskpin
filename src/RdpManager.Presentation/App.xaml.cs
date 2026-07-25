@@ -60,6 +60,8 @@ public partial class App : Microsoft.UI.Xaml.Application
                 services.AddSingleton<IDispatcherService, DispatcherService>();
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<IToastService, ToastService>();
+                services.AddSingleton<GitHubReleaseService>();
+                services.AddSingleton<ReleaseNotesReader>();
                 services.AddSingleton<UpdateChecker>();
 
                 // ViewModels

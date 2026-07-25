@@ -9,7 +9,7 @@
 #ifndef AppVersion
   #define AppVersion "1.0.0"
 #endif
-#define AppPublisher "OPSWAT"
+#define AppPublisher "sontbui"
 #define AppExe "Deskpin.exe"
 ; Path to the self-contained publish folder (relative to this .iss file).
 #define PublishDir "..\src\RdpManager.Presentation\bin\Release\net9.0-windows10.0.19041.0\win-x64\publish"

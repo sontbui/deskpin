@@ -6,7 +6,7 @@
     <RootNamespace>RdpManager.Presentation</RootNamespace>
     <AssemblyName>Deskpin</AssemblyName>
     <Product>Deskpin</Product>
-    <Company>OPSWAT</Company>
+    <Company>sontbui</Company>
     <!-- Overridden by CI from the git tag (see .github/workflows/release.yml). -->
     <Version>1.0.0</Version>
     <ApplicationIcon>Assets\deskpin.ico</ApplicationIcon>
@@ -34,5 +34,8 @@
   <ItemGroup>
     <!-- Ship the icon next to the exe so the window/taskbar icon can be set at runtime. -->
     <Content Include="Assets\deskpin.ico" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Ship the release notes so the About page can show "What's new" offline. -->
+    <None Include="..\..\release-notes\*.json" Link="release-notes\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
