@@ -1,13 +1,13 @@
 {
-  "title": "Deskpin 1.0.0",
+  "title": "Deskpin 1.0.0 — First release",
   "description": [
-    { "content": "Position-based monitor matching: Deskpin stores each monitor's hardware fingerprint and position, never its Windows index, so sessions reopen on the right physical screens after a dock re-plug or re-index." },
-    { "content": "Machine management: add, edit, duplicate, delete, ping; search by name, host or tag." },
-    { "content": "First-run monitor picker: choose the screens a session opens on once; Deskpin remembers them." },
-    { "content": "Smart re-map: silent when confident, with a reconfigure prompt when it can't map reliably." },
-    { "content": "Quick actions: double-click a machine to remote; the ⋯ menu offers Remote, Configure display, Ping, Edit and Delete." },
-    { "content": "Active-session dot: a green dot marks machines with a live remote session." },
-    { "content": "Security: passwords are encrypted at rest with Windows DPAPI and delivered to mstsc via Credential Manager; the generated .rdp never contains a password." },
-    { "content": "Automatic update check against GitHub Releases on startup." }
+    { "content": "Monitors stay put: Deskpin remembers each screen by its hardware + position, not its Windows index — so remote sessions reopen on the right physical monitors even after you unplug or re-plug a dock." },
+    { "content": "Pick your screens once with the first-run monitor picker; Deskpin reuses that layout every time." },
+    { "content": "Smart re-map: silently adapts when the layout changes and it's confident, and asks you to reconfigure only when it can't map reliably." },
+    { "content": "Manage machines: add, edit, duplicate, delete and ping; search by name, host or tag." },
+    { "content": "Fast to use: double-click a machine to remote, or use the ⋯ menu for Remote, Configure display, Ping, Edit and Delete." },
+    { "content": "A green dot shows which machines currently have a live remote session." },
+    { "content": "Secure by default: passwords are encrypted with Windows DPAPI and handed to mstsc through Credential Manager — the generated .rdp never contains a password." },
+    { "content": "Checks GitHub for updates on startup and offers to download a newer version." }
   ]
 }
