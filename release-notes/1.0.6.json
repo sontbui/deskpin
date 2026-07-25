@@ -1,5 +1,5 @@
 {
-  "title": "Deskpin 1.0.0 — First release",
+  "title": "Deskpin - Release",
   "description": [
     { "content": "Monitors stay put: Deskpin remembers each screen by its hardware + position, not its Windows index — so remote sessions reopen on the right physical monitors even after you unplug or re-plug a dock." },
     { "content": "Pick your screens once with the first-run monitor picker; Deskpin reuses that layout every time." },
