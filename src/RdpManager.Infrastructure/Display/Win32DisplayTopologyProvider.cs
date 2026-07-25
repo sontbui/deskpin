@@ -61,7 +61,9 @@ public sealed class Win32DisplayTopologyProvider : IDisplayTopologyProvider
 
             monitors.Add(new MonitorInfo
             {
-                MstscMonitorId = index,
+                // mstsc numbers monitors as (GDI display number - 1), e.g. \\.\DISPLAY5 -> id 4.
+                // These ids can have gaps (0,1,4), so we must NOT use the enumeration index.
+                MstscMonitorId = MstscIdFromDevice(mi.szDevice, index),
                 DevicePath = stablePath,
                 Geometry = geometry,
                 IsPrimary = isPrimary,
@@ -77,6 +79,15 @@ public sealed class Win32DisplayTopologyProvider : IDisplayTopologyProvider
             throw new InvalidOperationException("EnumDisplayMonitors failed.");
 
         return Task.FromResult(new DisplayTopology(monitors));
+    }
+
+    /// <summary>Parses "\\.\DISPLAY5" -> 5 and returns the zero-based mstsc id (4). Falls back to the index.</summary>
+    private static int MstscIdFromDevice(string gdiName, int fallback)
+    {
+        var n = 0; var any = false;
+        foreach (var c in gdiName ?? string.Empty)
+            if (char.IsDigit(c)) { n = (n * 10) + (c - '0'); any = true; }
+        return any && n > 0 ? n - 1 : fallback;
     }
 
     private static string? ResolveStableDevicePath(string gdiDeviceName)

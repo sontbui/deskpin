@@ -1,0 +1,31 @@
+# Normalize line endings so the LF/CRLF warning goes away and diffs stay clean.
+# Text files are stored as LF in the repo and checked out with the platform's native endings.
+* text=auto
+
+# Explicit text types (kept as LF in the repo).
+*.cs        text
+*.csproj    text
+*.props     text
+*.targets   text
+*.xaml      text
+*.json      text
+*.yml       text
+*.yaml      text
+*.md        text
+*.iss       text
+*.manifest  text
+*.config    text
+
+# Windows-oriented files that prefer CRLF.
+*.sln       text eol=crlf
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# Binary files — never touch line endings.
+*.ico       binary
+*.png       binary
+*.jpg       binary
+*.pfx       binary
+*.cer       binary
+*.snk       binary

@@ -83,20 +83,23 @@ public sealed partial class MonitorPickerViewModel : ObservableObject
         }
     }
 
-    /// <summary>Derives human position labels (Left/Center/Right/Top…) from geometry.</summary>
+    /// <summary>
+    /// Orders monitors left-to-right by their real X position and labels them by that position
+    /// (Left / Center / Right / Middle N). "primary" is only a suffix — it does NOT decide the
+    /// position, so a primary on the far left is correctly labelled "Left · primary".
+    /// </summary>
     private static IEnumerable<(MonitorInfo, string)> Label(DisplayTopology topo)
     {
         var ordered = topo.Monitors.OrderBy(m => m.Geometry.X).ThenBy(m => m.Geometry.Y).ToList();
-        foreach (var m in topo.Monitors)
+        var n = ordered.Count;
+        for (var i = 0; i < n; i++)
         {
-            string label;
-            if (m.IsPrimary) label = "Center (primary)";
-            else
-            {
-                var rank = ordered.IndexOf(m);
-                label = rank == 0 ? "Left" : rank == ordered.Count - 1 ? "Right" : "Middle";
-            }
-            yield return (m, label);
+            var m = ordered[i];
+            var pos = n == 1 ? "Display"
+                : i == 0 ? "Left"
+                : i == n - 1 ? "Right"
+                : n == 3 ? "Center" : $"Middle {i}";
+            yield return (m, m.IsPrimary ? $"{pos} · primary" : pos);
         }
     }
 }
