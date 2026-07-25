@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="RdpManager.Presentation.Views.MonitorPickerDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:RdpManager.Presentation.ViewModels"
+    Title="Which screens should this session open on?"
+    PrimaryButtonText="Save &amp; remote"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary">
+    <StackPanel Spacing="12" Width="560">
+        <TextBlock TextWrapping="Wrap" Opacity="0.8"
+                   Text="Click the monitors below. We save the position you pick — not the index — so it survives dock re-plugs. You only do this once." />
+        <ItemsControl ItemsSource="{x:Bind Vm.Monitors}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MonitorTileViewModel">
+                    <ToggleButton IsChecked="{x:Bind IsSelected, Mode=TwoWay}" Width="150" Height="96">
+                        <StackPanel>
+                            <TextBlock Text="{x:Bind Label}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock Text="{x:Bind Resolution}" FontSize="11" Opacity="0.7" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </ToggleButton>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</ContentDialog>

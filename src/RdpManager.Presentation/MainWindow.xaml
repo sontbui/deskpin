@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="RdpManager.Presentation.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid x:Name="Root">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Custom Windows 11 caption bar with a centered command bar -->
+        <Grid x:Name="AppTitleBar" Height="40" Background="Transparent">
+            <TextBlock Text="Deskpin" VerticalAlignment="Center" Margin="16,0,0,0"
+                       FontSize="12" FontWeight="SemiBold" />
+            <AutoSuggestBox x:Name="Omni" PlaceholderText="Search or run a command  (Ctrl+K)"
+                            Width="300" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            QueryIcon="Find" />
+        </Grid>
+
+        <NavigationView Grid.Row="1" x:Name="Nav" PaneDisplayMode="LeftCompact"
+                        IsSettingsVisible="True" SelectionChanged="OnNavSelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Machines" Tag="Machines" IsSelected="True">
+                    <NavigationViewItem.Icon><SymbolIcon Symbol="AllApps" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Groups" Tag="Groups">
+                    <NavigationViewItem.Icon><SymbolIcon Symbol="ViewAll" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Activity" Tag="Activity">
+                    <NavigationViewItem.Icon><SymbolIcon Symbol="Clock" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <Frame x:Name="ContentFrame" />
+        </NavigationView>
+
+        <!-- Non-blocking toast, bound to ToastService -->
+        <InfoBar x:Name="Toast" Grid.Row="1" IsOpen="False" Severity="Success"
+                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16" MaxWidth="380" />
+    </Grid>
+</Window>

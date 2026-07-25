@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="RdpManager.Presentation.Views.GroupsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Padding="24" Spacing="8">
+        <TextBlock Text="Groups" FontSize="22" FontWeight="SemiBold" />
+        <TextBlock Opacity="0.7" TextWrapping="Wrap"
+                   Text="Saved environments. Bulk-remote opens every machine on its own saved positions. (ViewModel wired; full UI is a fast-follow.)" />
+    </StackPanel>
+</Page>

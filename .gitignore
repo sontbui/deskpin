@@ -1,0 +1,67 @@
+# ── Build output ────────────────────────────────────────────────
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+publish/
+[Pp]ublish/
+artifacts/
+
+# ── Visual Studio / Rider / VS Code ─────────────────────────────
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.userprefs
+
+# ── .NET ────────────────────────────────────────────────────────
+project.lock.json
+project.fragment.lock.json
+*.nupkg
+*.snupkg
+.nuget/
+msbuild.binlog
+*.binlog
+
+# ── Test / coverage ─────────────────────────────────────────────
+[Tt]est[Rr]esult*/
+[Cc]overage*/
+*.coverage
+*.coveragexml
+*.trx
+
+# ── WinUI / MSIX ────────────────────────────────────────────────
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+AppPackages/
+BundleArtifacts/
+*.pfx
+*.cer
+
+# ── Installer (Inno Setup output) ───────────────────────────────
+installer/Output/
+*.exe.config
+
+# ── App runtime data / local artifacts ──────────────────────────
+*.db
+*.db-shm
+*.db-wal
+startup-error.log
+
+# ── OS noise ────────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# ── Keep these (icons/assets are source, not build output) ──────
+!src/RdpManager.Presentation/Assets/*.ico
+!src/RdpManager.Presentation/Assets/*.png
+
+.vs/

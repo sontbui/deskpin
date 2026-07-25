@@ -1,0 +1,64 @@
+name: Release
+
+# Push a tag like v1.0.1 to build the app, make an installer, and publish a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Derive version from tag
+        id: ver
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}" -replace '^v',''
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Restore & test
+        shell: pwsh
+        run: |
+          dotnet test --configuration Release
+
+      - name: Publish (self-contained, x64)
+        shell: pwsh
+        run: >
+          dotnet publish src/RdpManager.Presentation/RdpManager.Presentation.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:WindowsAppSDKSelfContained=true -p:WindowsPackageType=None
+          -p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: iscc /DAppVersion=${{ steps.ver.outputs.version }} installer\RdpManager.iss
+
+      - name: Extract release notes for this version
+        id: notes
+        shell: pwsh
+        run: |
+          $ver = "${{ steps.ver.outputs.version }}"
+          $text = Get-Content CHANGELOG.md -Raw
+          $pattern = "(?ms)^## \[$([regex]::Escape($ver))\].*?(?=^## \[|\z)"
+          $m = [regex]::Match($text, $pattern)
+          $body = if ($m.Success) { $m.Value.Trim() } else { "Deskpin $ver" }
+          Set-Content -Path release-notes.md -Value $body
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Deskpin ${{ steps.ver.outputs.version }}
+          body_path: release-notes.md
+          files: installer/Output/*.exe

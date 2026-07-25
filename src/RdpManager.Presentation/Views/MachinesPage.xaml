@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="RdpManager.Presentation.Views.MachinesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:RdpManager.Presentation.ViewModels">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Padding="20,16,20,8" Spacing="10">
+            <Grid>
+                <TextBlock Text="Machines" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <Button Content="+ Add" HorizontalAlignment="Right" Click="OnAddClick" />
+            </Grid>
+            <TextBox PlaceholderText="Search name, host, tag…"
+                     Text="{x:Bind Vm.Search, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Text="Double-click a machine to remote · ⋯ for more actions"
+                       Opacity="0.5" FontSize="12" />
+        </StackPanel>
+
+        <!-- List with per-row overflow menu -->
+        <ListView Grid.Row="1" Padding="12,0,12,12"
+                  ItemsSource="{x:Bind Vm.Machines}"
+                  SelectedItem="{x:Bind Vm.Selected, Mode=TwoWay}"
+                  DoubleTapped="OnMachineDoubleTapped">
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="vm:MachineItemViewModel">
+                    <Grid Padding="4,6" ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <!-- Active-session dot (space reserved so rows stay aligned) -->
+                        <Ellipse Width="8" Height="8" VerticalAlignment="Center"
+                                 Fill="{StaticResource ActiveSessionBrush}"
+                                 Visibility="{x:Bind IsActive, Mode=OneWay, Converter={StaticResource BoolToVisibility}}"
+                                 ToolTipService.ToolTip="Remote session active" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" />
+                            <TextBlock Text="{x:Bind HostText}" Opacity="0.6" FontSize="12" />
+                        </StackPanel>
+                        <Button Grid.Column="2" VerticalAlignment="Center"
+                                Background="Transparent" BorderThickness="0"
+                                Click="OnItemMenuClick" ToolTipService.ToolTip="More actions">
+                            <FontIcon Glyph="&#xE712;" FontSize="16" />
+                            <Button.Flyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Remote" Click="OnRemoteItem">
+                                        <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8A7;" /></MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem Text="Configure display…" Click="OnConfigureItem">
+                                        <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE7F4;" /></MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem Text="Ping" Click="OnPingItem">
+                                        <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE774;" /></MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem Text="Edit" Click="OnEditItem">
+                                        <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE70F;" /></MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutSeparator />
+                                    <MenuFlyoutItem Text="Delete" Click="OnDeleteItem">
+                                        <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;" /></MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </Button.Flyout>
+                        </Button>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</Page>
