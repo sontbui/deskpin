@@ -1,0 +1,8 @@
+{
+  "title": "Deskpin X.Y.Z",
+  "description": [
+    { "content": "First bullet — what changed." },
+    { "content": "Second bullet." },
+    { "content": "…add as many dot points as you need." }
+  ]
+}

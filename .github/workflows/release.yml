@@ -45,20 +45,23 @@ jobs:
         shell: pwsh
         run: iscc /DAppVersion=${{ steps.ver.outputs.version }} installer\RdpManager.iss
 
-      - name: Extract release notes for this version
+      - name: Build release notes from JSON
         id: notes
         shell: pwsh
         run: |
-          $ver = "${{ steps.ver.outputs.version }}"
-          $text = Get-Content CHANGELOG.md -Raw
-          $pattern = "(?ms)^## \[$([regex]::Escape($ver))\].*?(?=^## \[|\z)"
-          $m = [regex]::Match($text, $pattern)
-          $body = if ($m.Success) { $m.Value.Trim() } else { "Deskpin $ver" }
+          $ver  = "${{ steps.ver.outputs.version }}"
+          $path = "release-notes/$ver.json"
+          if (-not (Test-Path $path)) { throw "Missing release notes file: $path" }
+          $json = Get-Content $path -Raw | ConvertFrom-Json
+          $title = $json.title
+          $body  = "# $title`n`n"
+          foreach ($item in $json.description) { $body += "* $($item.content)`n" }
           Set-Content -Path release-notes.md -Value $body
+          "title=$title" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Deskpin ${{ steps.ver.outputs.version }}
+          name: ${{ steps.notes.outputs.title }}
           body_path: release-notes.md
           files: installer/Output/*.exe

@@ -110,7 +110,8 @@ public sealed class MachineRepository : IMachineRepository
     }
 
     private static IQueryable<Machine> LoadGraph(IQueryable<Machine> q) =>
-        q.Include(m => m.DisplayProfile!).ThenInclude(p => p.SelectedMonitors)
+        q.Include(m => m.DisplayProfile!)
+            .ThenInclude(p => p.SelectedMonitors.OrderBy(mon => mon.OrdinalInProfile))
          .Include(m => m.Tags)
          .AsSplitQuery();
 }

@@ -1,0 +1,13 @@
+{
+  "title": "Deskpin 1.0.0",
+  "description": [
+    { "content": "Position-based monitor matching: Deskpin stores each monitor's hardware fingerprint and position, never its Windows index, so sessions reopen on the right physical screens after a dock re-plug or re-index." },
+    { "content": "Machine management: add, edit, duplicate, delete, ping; search by name, host or tag." },
+    { "content": "First-run monitor picker: choose the screens a session opens on once; Deskpin remembers them." },
+    { "content": "Smart re-map: silent when confident, with a reconfigure prompt when it can't map reliably." },
+    { "content": "Quick actions: double-click a machine to remote; the ⋯ menu offers Remote, Configure display, Ping, Edit and Delete." },
+    { "content": "Active-session dot: a green dot marks machines with a live remote session." },
+    { "content": "Security: passwords are encrypted at rest with Windows DPAPI and delivered to mstsc via Credential Manager; the generated .rdp never contains a password." },
+    { "content": "Automatic update check against GitHub Releases on startup." }
+  ]
+}
