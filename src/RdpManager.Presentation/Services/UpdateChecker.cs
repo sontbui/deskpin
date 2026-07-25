@@ -8,8 +8,8 @@ namespace RdpManager.Presentation.Services;
 
 /// <summary>
 /// Checks GitHub for a newer release and, if found, shows its release notes with a Download button.
-/// <paramref name="announceResult"/> = true makes it also report "you're up to date" / "couldn't
-/// check" (used by the manual button in About); the startup check stays silent when there's nothing.
+/// When <c>announceResult</c> is true it also reports "you're up to date" / "couldn't check"
+/// (used by the manual button in About); the startup check stays silent when there's nothing new.
 /// </summary>
 public sealed class UpdateChecker
 {
