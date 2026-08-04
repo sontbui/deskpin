@@ -13,8 +13,10 @@ namespace RdpManager.Infrastructure.Display;
 /// GetMonitorInfo). This replaces the brief's "mstsc /l" step: mstsc /l renders a modal dialog
 /// and cannot be parsed reliably, whereas this is silent and authoritative.
 ///
-/// mstsc's <c>selectedmonitors</c> ids correspond to the EnumDisplayMonitors ordering, so the
-/// enumeration index IS the id we later write to the .rdp — derived fresh every launch.
+/// mstsc's <c>selectedmonitors</c> id for a monitor is the 0-based position of its adapter in the
+/// EnumDisplayDevices(NULL, i, ...) enumeration, counting only adapters attached to the desktop.
+/// That is NOT the same as the GDI number in <c>\\.\DISPLAYn</c> (which drifts high after
+/// dock/undock churn) nor the EnumDisplayMonitors index — so we look it up per launch.
 ///
 /// EDID identity (manufacturer/product/serial) enriches matching when available; it is filled by
 /// <see cref="IEdidReader"/>. When EDID is hidden the matcher degrades gracefully to geometry,
@@ -42,6 +44,9 @@ public sealed class Win32DisplayTopologyProvider : IDisplayTopologyProvider
         var monitors = new List<MonitorInfo>();
         var index = 0;
 
+        // GDI device name (\\.\DISPLAYn) -> mstsc monitor id (adapter position, desktop-attached only).
+        var idMap = BuildMstscIdMap();
+
         bool Callback(IntPtr hMonitor, IntPtr hdc, ref NativeMethods.RECT _, IntPtr __)
         {
             var mi = new NativeMethods.MONITORINFOEX { cbSize = System.Runtime.InteropServices.Marshal.SizeOf<NativeMethods.MONITORINFOEX>() };
@@ -61,9 +66,11 @@ public sealed class Win32DisplayTopologyProvider : IDisplayTopologyProvider
 
             monitors.Add(new MonitorInfo
             {
-                // mstsc numbers monitors as (GDI display number - 1), e.g. \\.\DISPLAY5 -> id 4.
-                // These ids can have gaps (0,1,4), so we must NOT use the enumeration index.
-                MstscMonitorId = MstscIdFromDevice(mi.szDevice, index),
+                // Real mstsc id = adapter position in EnumDisplayDevices (desktop-attached only).
+                // Fall back to (GDI number - 1) only if the lookup somehow misses.
+                MstscMonitorId = idMap.TryGetValue(mi.szDevice, out var mstscId)
+                    ? mstscId
+                    : MstscIdFromDevice(mi.szDevice, index),
                 DevicePath = stablePath,
                 Geometry = geometry,
                 IsPrimary = isPrimary,
@@ -79,6 +86,30 @@ public sealed class Win32DisplayTopologyProvider : IDisplayTopologyProvider
             throw new InvalidOperationException("EnumDisplayMonitors failed.");
 
         return Task.FromResult(new DisplayTopology(monitors));
+    }
+
+    /// <summary>
+    /// Builds GDI device name (<c>\\.\DISPLAYn</c>) -> mstsc monitor id by walking the adapter list.
+    /// The id is the raw enumeration index <c>i</c>; only desktop-attached adapters are recorded,
+    /// so detached pseudo-adapters (RDP mirror driver, unplugged GPUs) leave the gaps mstsc shows.
+    /// </summary>
+    private static Dictionary<string, int> BuildMstscIdMap()
+    {
+        var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (uint i = 0; ; i++)
+        {
+            var dd = new NativeMethods.DISPLAY_DEVICE
+            {
+                cb = System.Runtime.InteropServices.Marshal.SizeOf<NativeMethods.DISPLAY_DEVICE>()
+            };
+            if (!NativeMethods.EnumDisplayDevices(null, i, ref dd, 0)) break;
+            if ((dd.StateFlags & NativeMethods.DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) != 0
+                && !string.IsNullOrEmpty(dd.DeviceName))
+            {
+                map[dd.DeviceName] = (int)i;
+            }
+        }
+        return map;
     }
 
     /// <summary>Parses "\\.\DISPLAY5" -> 5 and returns the zero-based mstsc id (4). Falls back to the index.</summary>

@@ -34,6 +34,7 @@ public sealed partial class MonitorPickerViewModel : ObservableObject
 {
     private readonly IDisplayTopologyProvider _topology;
     private readonly MachineService _machines;
+    private readonly DisplayMatcher _matcher;
     private readonly IToastService _toasts;
     private Guid _machineId;
 
@@ -42,9 +43,10 @@ public sealed partial class MonitorPickerViewModel : ObservableObject
 
     public event Action? Saved;
 
-    public MonitorPickerViewModel(IDisplayTopologyProvider topology, MachineService machines, IToastService toasts)
+    public MonitorPickerViewModel(
+        IDisplayTopologyProvider topology, MachineService machines, DisplayMatcher matcher, IToastService toasts)
     {
-        _topology = topology; _machines = machines; _toasts = toasts;
+        _topology = topology; _machines = machines; _matcher = matcher; _toasts = toasts;
     }
 
     public async Task LoadForAsync(Guid machineId, CancellationToken ct)
@@ -58,11 +60,39 @@ public sealed partial class MonitorPickerViewModel : ObservableObject
 
         foreach (var (m, label) in Label(topo))
         {
-            var tile = new MonitorTileViewModel { Live = m, Label = label, IsSelected = m.IsPrimary };
+            var tile = new MonitorTileViewModel { Live = m, Label = label };
             tile.PropertyChanged += OnTileChanged;
             Monitors.Add(tile);
         }
+
+        // Re-opening a configured machine must show what was actually saved — not just the primary.
+        var machine = await _machines.GetAsync(machineId, ct);
+        var profile = machine?.DisplayProfile;
+        if (profile is not null && profile.SelectedMonitors.Count > 0)
+            RestoreSelection(profile, topo);
+        else
+            foreach (var tile in Monitors) tile.IsSelected = tile.Live.IsPrimary; // first-time default
+
         EnsureSessionPrimary();
+    }
+
+    /// <summary>Pre-selects the tiles matching a saved profile and restores its session primary.</summary>
+    private void RestoreSelection(Domain.Entities.DisplayProfile profile, DisplayTopology topo)
+    {
+        var match = _matcher.Match(profile, topo);
+        var matched = match.Mappings.Where(m => m.IsMatched).ToList();
+
+        foreach (var mapping in matched)
+        {
+            var tile = Monitors.FirstOrDefault(t => ReferenceEquals(t.Live, mapping.Matched));
+            if (tile is not null) tile.IsSelected = true;
+        }
+
+        // The saved session primary is the matched monitor with the smallest ordinal (it was first).
+        var primary = matched.OrderBy(m => m.Saved.OrdinalInProfile).FirstOrDefault();
+        var primaryTile = primary is null ? null
+            : Monitors.FirstOrDefault(t => ReferenceEquals(t.Live, primary.Matched));
+        if (primaryTile is not null) SetSessionPrimary(primaryTile);
     }
 
     private void OnTileChanged(object? sender, PropertyChangedEventArgs e)

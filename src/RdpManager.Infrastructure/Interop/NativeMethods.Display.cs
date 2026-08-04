@@ -37,6 +37,11 @@ internal static partial class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
 
+    // Set on adapters that are part of the desktop. mstsc numbers its monitors by the 0-based
+    // position of the adapter in the EnumDisplayDevices(NULL, i, ...) enumeration, counting only
+    // those with this flag — which is why its ids can have gaps (0, 4, 5).
+    internal const int DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x1;
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     internal struct DISPLAY_DEVICE
     {
