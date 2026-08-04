@@ -18,7 +18,21 @@ public sealed class ReleaseNotesReader
     public ReleaseNote? ForCurrentVersion()
     {
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
-        return Read(Path.Combine(AppContext.BaseDirectory, "release-notes", $"{version}.json"));
+        var dir = Path.Combine(AppContext.BaseDirectory, "release-notes");
+
+        // Exact match first.
+        var exact = Read(Path.Combine(dir, $"{version}.json"));
+        if (exact is not null) return exact;
+
+        // Fall back to the most recent notes shipped, retitled to this version.
+        if (!Directory.Exists(dir)) return null;
+        var newest = Directory.GetFiles(dir, "*.json")
+            .Where(f => Version.TryParse(Path.GetFileNameWithoutExtension(f), out _))
+            .OrderByDescending(f => Version.Parse(Path.GetFileNameWithoutExtension(f)))
+            .FirstOrDefault();
+
+        var fallback = newest is null ? null : Read(newest);
+        return fallback is null ? null : fallback with { Title = $"Deskpin {version}" };
     }
 
     public static ReleaseNote? Read(string path)

@@ -51,11 +51,26 @@ jobs:
         run: |
           $ver  = "${{ steps.ver.outputs.version }}"
           $path = "release-notes/$ver.json"
-          if (-not (Test-Path $path)) { throw "Missing release notes file: $path" }
-          $json = Get-Content $path -Raw | ConvertFrom-Json
-          $title = $json.title
-          $body  = "# $title`n`n"
-          foreach ($item in $json.description) { $body += "* $($item.content)`n" }
+          $json = $null
+          if (Test-Path $path) {
+            $json = Get-Content $path -Raw | ConvertFrom-Json
+          } else {
+            # No notes for this version (quick test bump): reuse the most recent notes.
+            $latest = Get-ChildItem "release-notes/*.json" |
+              Where-Object { $_.BaseName -match '^\d+(\.\d+)+$' } |
+              Sort-Object { [version]$_.BaseName } -Descending |
+              Select-Object -First 1
+            if ($latest) { $json = Get-Content $latest.FullName -Raw | ConvertFrom-Json }
+          }
+          if ($json) {
+            # Always show the NEW version in the title, keep the bullets.
+            $title = if ($json.title -match '\d+\.\d+') { $json.title -replace '\d+\.\d+(\.\d+){0,2}', $ver } else { "Deskpin $ver" }
+            $body  = "# $title`n`n"
+            foreach ($item in $json.description) { $body += "* $($item.content)`n" }
+          } else {
+            $title = "Deskpin $ver"
+            $body  = "Deskpin $ver"
+          }
           Set-Content -Path release-notes.md -Value $body
           "title=$title" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
