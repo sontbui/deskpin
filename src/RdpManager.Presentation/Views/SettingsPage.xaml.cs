@@ -1,14 +1,20 @@
+using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Win32;
+using RdpManager.Infrastructure.Launching;
 using RdpManager.Presentation.Services;
 
 namespace RdpManager.Presentation.Views;
 
 public sealed partial class SettingsPage : Page
 {
+    private const string TsKey = @"SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services";
+
     public SettingsPage()
     {
         InitializeComponent();
@@ -27,6 +33,79 @@ public sealed partial class SettingsPage : Page
             WhatsNewTitle.Visibility = Visibility.Collapsed;
             WhatsNewText.Visibility = Visibility.Collapsed;
         }
+
+        ThumbprintBox.Text = App.Host.Services.GetRequiredService<RdpSigner>().EnsureThumbprint() ?? "(unavailable)";
+        RefreshSeamlessStatus();
+    }
+
+    private void RefreshSeamlessStatus()
+    {
+        var on = IsTrusted();
+        SeamlessStatus.Text = on ? "Status: ON — Deskpin is a trusted publisher; no prompt." : "Status: OFF — Windows will prompt on connect.";
+        EnableSeamlessButton.IsEnabled = !on;
+        DisableSeamlessButton.IsEnabled = on;
+    }
+
+    private bool IsTrusted()
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(TsKey);
+            // Our thumbprint is present in the trusted-publisher list.
+            var tp = (key?.GetValue("TrustedCertThumbprints") as string) ?? string.Empty;
+            var want = ThumbprintBox.Text.Trim();
+            return want.Length > 0 && tp.Contains(want, StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
+    // Writes exactly what the "trusted .rdp publishers" Group Policy writes (verified against gpedit),
+    // so no manual gpedit is needed — works on Windows Home too.
+    private void OnEnableSeamless(object sender, RoutedEventArgs e)
+    {
+        var tp = ThumbprintBox.Text.Trim();
+        if (string.IsNullOrEmpty(tp) || tp.StartsWith('(')) return;
+        var q = $"\"HKLM\\{TsKey}\"";
+        var args =
+            $"/c reg add {q} /v AllowSignedFiles /t REG_DWORD /d 1 /f & " +
+            $"reg add {q} /v AllowUnsignedFiles /t REG_DWORD /d 1 /f & " +
+            $"reg add {q} /v TrustedCertModules /t REG_SZ /d {tp} /f & " +
+            $"reg add {q} /v TrustedCertThumbprints /t REG_SZ /d {tp} /f & " +
+            $"reg add \"HKLM\\{TsKey}\\TrustedCertModules\" /v 1 /t REG_SZ /d {tp} /f";
+        RunElevated(args);
+    }
+
+    private void OnDisableSeamless(object sender, RoutedEventArgs e)
+    {
+        var q = $"\"HKLM\\{TsKey}\"";
+        var args =
+            $"/c reg delete \"HKLM\\{TsKey}\\TrustedCertModules\" /f & " +
+            $"reg delete {q} /v TrustedCertModules /f & " +
+            $"reg delete {q} /v TrustedCertThumbprints /f & " +
+            $"reg delete {q} /v AllowSignedFiles /f & " +
+            $"reg delete {q} /v AllowUnsignedFiles /f";
+        RunElevated(args);
+    }
+
+    private void RunElevated(string cmdArgs)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("cmd.exe", cmdArgs)
+            {
+                UseShellExecute = true,
+                Verb = "runas", // UAC prompt
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+            };
+            using var p = Process.Start(psi);
+            p?.WaitForExit(15_000);
+        }
+        catch (Exception)
+        {
+            // UAC declined or failed — leave state unchanged.
+        }
+        RefreshSeamlessStatus();
     }
 
     private async void OnCheckUpdates(object sender, RoutedEventArgs e)

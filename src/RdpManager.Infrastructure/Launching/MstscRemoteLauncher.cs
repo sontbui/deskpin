@@ -17,11 +17,13 @@ public sealed class MstscRemoteLauncher : IRemoteLauncher
     private static readonly TimeSpan ReadGrace = TimeSpan.FromSeconds(3);
 
     private readonly TempRdpFileWriter _writer;
+    private readonly RdpSigner _signer;
     private readonly ILogger<MstscRemoteLauncher> _logger;
 
-    public MstscRemoteLauncher(TempRdpFileWriter writer, ILogger<MstscRemoteLauncher> logger)
+    public MstscRemoteLauncher(TempRdpFileWriter writer, RdpSigner signer, ILogger<MstscRemoteLauncher> logger)
     {
         _writer = writer;
+        _signer = signer;
         _logger = logger;
     }
 
@@ -32,7 +34,8 @@ public sealed class MstscRemoteLauncher : IRemoteLauncher
 
         var path = await _writer.WriteAsync(rdpFileText, ct);
         WriteDiagnosticCopy(rdpFileText); // persistent, non-secret copy for troubleshooting
-        PreAuthorizeRedirection(rdpFileText); // so mstsc doesn't prompt "Allow resources…" each time
+        PreAuthorizeRedirection(rdpFileText); // pre-checks the resource boxes
+        _signer.SignInPlace(path);            // sign so the machine policy can fully trust it (no prompt)
         Process? process = null;
         try
         {

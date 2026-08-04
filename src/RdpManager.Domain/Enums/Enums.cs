@@ -59,7 +59,13 @@ public enum RedirectionFlags
     Clipboard = 1 << 0,
     Printers = 1 << 1,
     Drives = 1 << 2,
-    Audio = 1 << 3,
+    Audio = 1 << 3,        // audio playback (remote → local speakers)
     Usb = 1 << 4,
     SmartCards = 1 << 5,
+    WebAuthn = 1 << 6,     // Windows Hello / security keys
+    Microphone = 1 << 7,   // audio capture (local mic → remote)
+    Camera = 1 << 8,
+
+    /// <summary>Low-risk defaults that don't trigger mstsc's consent prompt.</summary>
+    Default = Clipboard | Printers | Audio,
 }

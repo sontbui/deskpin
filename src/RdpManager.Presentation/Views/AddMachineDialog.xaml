@@ -7,19 +7,45 @@
     PrimaryButtonText="Save"
     CloseButtonText="Cancel"
     DefaultButton="Primary">
-    <StackPanel Spacing="10" Width="360">
-        <TextBox x:Name="NameBox" Header="Name" PlaceholderText="build-agent-02" />
-        <Grid ColumnSpacing="8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="90" />
-            </Grid.ColumnDefinitions>
-            <TextBox x:Name="HostBox" Header="Host / IP" PlaceholderText="10.0.4.22" />
-            <TextBox x:Name="PortBox" Grid.Column="1" Header="Port" Text="3389" />
-        </Grid>
-        <TextBox x:Name="UserBox" Header="Username" PlaceholderText="svc_build" />
-        <PasswordBox x:Name="PasswordBox" Header="Password"
-                     PlaceholderText="leave blank to keep / prompt at connect" />
-        <TextBox x:Name="TagsBox" Header="Tags (comma separated)" PlaceholderText="CI, Build" />
-    </StackPanel>
+    <ScrollViewer MaxHeight="460">
+        <StackPanel Spacing="10" Width="380">
+            <TextBox x:Name="NameBox" Header="Name" PlaceholderText="build-agent-02" />
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="90" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="HostBox" Header="Host / IP" PlaceholderText="10.0.4.22" />
+                <TextBox x:Name="PortBox" Grid.Column="1" Header="Port" Text="3389" />
+            </Grid>
+            <TextBox x:Name="UserBox" Header="Username" PlaceholderText="svc_build" />
+            <PasswordBox x:Name="PasswordBox" Header="Password"
+                         PlaceholderText="leave blank to keep / prompt at connect" />
+            <TextBox x:Name="TagsBox" Header="Tags (comma separated)" PlaceholderText="CI, Build" />
+
+            <TextBlock Text="Redirect to the remote machine" FontWeight="SemiBold" Margin="0,6,0,0" />
+            <Grid ColumnSpacing="12" RowSpacing="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition />
+                    <RowDefinition />
+                    <RowDefinition />
+                    <RowDefinition />
+                </Grid.RowDefinitions>
+                <CheckBox x:Name="ClipboardCheck" Grid.Row="0" Grid.Column="0" Content="Clipboard" />
+                <CheckBox x:Name="PrintersCheck"  Grid.Row="0" Grid.Column="1" Content="Printers" />
+                <CheckBox x:Name="AudioCheck"     Grid.Row="1" Grid.Column="0" Content="Audio (speakers)" />
+                <CheckBox x:Name="MicCheck"       Grid.Row="1" Grid.Column="1" Content="Microphone" />
+                <CheckBox x:Name="DrivesCheck"    Grid.Row="2" Grid.Column="0" Content="Drives" />
+                <CheckBox x:Name="WebAuthnCheck"  Grid.Row="2" Grid.Column="1" Content="WebAuthn" />
+                <CheckBox x:Name="CameraCheck"    Grid.Row="3" Grid.Column="0" Content="Camera" />
+                <CheckBox x:Name="SmartCardCheck" Grid.Row="3" Grid.Column="1" Content="Smart cards" />
+            </Grid>
+            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.55"
+                       Text="Ticked items are redirected and pre-approved. Sensitive ones (Drives, WebAuthn, Camera, Smart cards) may still show a Windows consent when connecting." />
+        </StackPanel>
+    </ScrollViewer>
 </ContentDialog>

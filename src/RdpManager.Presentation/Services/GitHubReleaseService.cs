@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace RdpManager.Presentation.Services;
 
-public sealed record GitHubRelease(Version Version, string Title, string Body, string Url);
+public sealed record GitHubRelease(Version Version, string Title, string Body, string Url, string? InstallerUrl);
 
 /// <summary>Reads the latest published release from GitHub. Best-effort; returns null on any failure.</summary>
 public sealed class GitHubReleaseService
@@ -30,9 +30,22 @@ public sealed class GitHubReleaseService
             var body = root.TryGetProperty("body", out var b) ? b.GetString() : null;
             var url = root.TryGetProperty("html_url", out var u) ? u.GetString() : $"https://github.com/{Repository}/releases";
 
+            // Find the installer asset (the Deskpin-Setup-*.exe attached to the release).
+            string? installerUrl = null;
+            if (root.TryGetProperty("assets", out var assets))
+                foreach (var a in assets.EnumerateArray())
+                {
+                    var assetName = a.TryGetProperty("name", out var an) ? an.GetString() : null;
+                    if (assetName is not null && assetName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        installerUrl = a.TryGetProperty("browser_download_url", out var du) ? du.GetString() : null;
+                        break;
+                    }
+                }
+
             var version = ParseVersion(tag);
             if (version is null) return null;
-            return new GitHubRelease(version, string.IsNullOrWhiteSpace(name) ? tag : name!, body ?? string.Empty, url!);
+            return new GitHubRelease(version, string.IsNullOrWhiteSpace(name) ? tag : name!, body ?? string.Empty, url!, installerUrl);
         }
         catch
         {

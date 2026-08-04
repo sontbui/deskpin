@@ -39,3 +39,9 @@ public interface IRemoteLauncher
 {
     Task<LaunchHandle> LaunchAsync(string rdpFileText, CancellationToken ct);
 }
+
+/// <summary>Removes everything the app created (cert, DB, secrets, registry, temp) at uninstall.</summary>
+public interface IUninstallCleanup
+{
+    Task RunAsync(CancellationToken ct);
+}

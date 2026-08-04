@@ -18,8 +18,8 @@
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
-DefaultDirName={autopf}\RDP Manager
-DefaultGroupName=RDP Manager
+DefaultDirName={autopf}\Deskpin
+DefaultGroupName=Deskpin
 UninstallDisplayIcon={app}\{#AppExe}
 OutputDir=Output
 OutputBaseFilename=Deskpin-Setup-{#AppVersion}
@@ -30,6 +30,9 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+; Close a running Deskpin so its files can be replaced during an in-app update.
+CloseApplications=yes
+RestartApplications=no
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
@@ -38,8 +41,18 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{group}\RDP Manager"; Filename: "{app}\{#AppExe}"
-Name: "{autodesktop}\RDP Manager"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+Name: "{group}\Deskpin"; Filename: "{app}\{#AppExe}"
+Name: "{autodesktop}\Deskpin"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "Launch RDP Manager"; Flags: nowait postinstall skipifsilent
+; No 'skipifsilent' so an in-app /SILENT update relaunches Deskpin automatically.
+Filename: "{app}\{#AppExe}"; Description: "Launch Deskpin"; Flags: nowait postinstall
+
+[UninstallRun]
+; Before removing files, let the app clean up its cert, secrets, registry and data.
+Filename: "{app}\{#AppExe}"; Parameters: "--cleanup"; Flags: runhidden waituntilterminated; RunOnceId: "DeskpinCleanup"
+
+[UninstallDelete]
+; Backup cleanup of the data folders in case the app couldn't run.
+Type: filesandordirs; Name: "{localappdata}\Deskpin"
+Type: filesandordirs; Name: "{localappdata}\RdpManager"

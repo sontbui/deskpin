@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.UI.Xaml;
@@ -48,6 +49,15 @@ public partial class App : Microsoft.UI.Xaml.Application
         var dbPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "RdpManager", "rdpmanager.db");
+
+        // Uninstall hook: `Deskpin.exe --cleanup` removes cert, secrets, registry and data, no UI.
+        if (Environment.GetCommandLineArgs().Any(a => string.Equals(a, "--cleanup", StringComparison.OrdinalIgnoreCase)))
+        {
+            await RunUninstallCleanupAsync(dbPath);
+            Environment.Exit(0);
+            return;
+        }
+
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
         Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
@@ -97,5 +107,25 @@ public partial class App : Microsoft.UI.Xaml.Application
     {
         await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(3));
         await Host.Services.GetRequiredService<UpdateChecker>().CheckAsync();
+    }
+
+    private static async Task RunUninstallCleanupAsync(string dbPath)
+    {
+        try
+        {
+            using var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+                .ConfigureServices(services =>
+                {
+                    services.AddApplication();
+                    services.AddInfrastructure(dbPath);
+                })
+                .Build();
+            await host.Services.GetRequiredService<RdpManager.Application.Abstractions.IUninstallCleanup>()
+                .RunAsync(System.Threading.CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            LogFatal(ex);
+        }
     }
 }

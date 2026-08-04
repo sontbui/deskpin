@@ -47,12 +47,20 @@ public sealed class RdpProfileBuilder : IRdpProfileBuilder
         Line($"screen mode id:i:{options.ScreenModeId}");
         Line("dynamic resolution:i:" + (options.DynamicResolution ? "1" : "0"));
 
-        // Redirection flags.
-        Line("redirectclipboard:i:" + Bit(machine.Redirection, RedirectionFlags.Clipboard));
-        Line("redirectprinters:i:" + Bit(machine.Redirection, RedirectionFlags.Printers));
-        Line("drivestoredirect:s:" + (machine.Redirection.HasFlag(RedirectionFlags.Drives) ? "*" : ""));
-        Line("audiomode:i:" + (machine.Redirection.HasFlag(RedirectionFlags.Audio) ? "0" : "2"));
-        Line("redirectsmartcards:i:" + Bit(machine.Redirection, RedirectionFlags.SmartCards));
+        // Every redirection is written explicitly from the machine's chosen flags, so only what the
+        // user ticked in the app is requested. Sensitive ones (drives, smart cards, WebAuthn, camera)
+        // default OFF, which is what keeps mstsc's consent dialog away unless the user opts in.
+        var r = machine.Redirection;
+        Line("redirectclipboard:i:" + Bit(r, RedirectionFlags.Clipboard));
+        Line("redirectprinters:i:" + Bit(r, RedirectionFlags.Printers));
+        Line("drivestoredirect:s:" + (r.HasFlag(RedirectionFlags.Drives) ? "*" : ""));
+        Line("audiomode:i:" + (r.HasFlag(RedirectionFlags.Audio) ? "0" : "2"));   // 0 = play locally
+        Line("audiocapturemode:i:" + Bit(r, RedirectionFlags.Microphone));
+        Line("redirectsmartcards:i:" + Bit(r, RedirectionFlags.SmartCards));
+        Line("redirectwebauthn:i:" + Bit(r, RedirectionFlags.WebAuthn));
+        Line("camerastoredirect:s:" + (r.HasFlag(RedirectionFlags.Camera) ? "*" : ""));
+        Line("redirectlocation:i:0");
+        Line("keyboardhook:i:2");
 
         // Gateway (jump host) as a first-class field, not a raw override.
         if (!string.IsNullOrWhiteSpace(machine.Gateway))

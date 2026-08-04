@@ -1,0 +1,13 @@
+{
+  "title": "Deskpin 1.1.1",
+  "description": [
+    { "content": "Seamless connect: trust the Deskpin publisher once (a single admin click in Info) and remote sessions open with no Windows security prompt, even with full resource redirection." },
+    { "content": "Per-machine redirection settings: choose exactly what to redirect — Clipboard, Printers, Audio, Microphone, Drives, WebAuthn, Camera, Smart cards. Only what you tick is requested." },
+    { "content": "Automatic updates in-app: Deskpin downloads the new version with a progress bar and installs it in place, then relaunches — no browser needed." },
+    { "content": "Activity log: a new page listing recent remote sessions, automatic layout re-maps and blocked (unreachable) attempts." },
+    { "content": "Info page: app version, What's new, check-for-updates, and the seamless-connect setup all in one place." },
+    { "content": "Clean uninstall: removes the signing certificate, stored credentials, registry entries, the database and all app data." },
+    { "content": "New app icon (white monitor outline with a teal pin, transparent background) and a compact, DPI-aware window." },
+    { "content": "Removed the unused Groups page." }
+  ]
+}

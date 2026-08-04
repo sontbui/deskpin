@@ -10,7 +10,8 @@ namespace RdpManager.Application.Machines;
 
 public sealed record CreateMachineRequest(
     string Name, string Host, int Port, string? Username,
-    IReadOnlyList<string> Tags, string? Gateway, string? Notes);
+    IReadOnlyList<string> Tags, string? Gateway, string? Notes,
+    RedirectionFlags Redirection = RedirectionFlags.Default);
 
 /// <summary>
 /// Application service for managing machine profiles. Owns credential lifecycle coordination so a
@@ -42,6 +43,7 @@ public sealed class MachineService
 
         machine.SetGateway(req.Gateway);
         machine.SetNotes(req.Notes);
+        machine.SetRedirection(req.Redirection);
         foreach (var tag in req.Tags.Where(t => !string.IsNullOrWhiteSpace(t)))
             machine.AddTag(new Tag(tag));
 
@@ -80,6 +82,7 @@ public sealed class MachineService
 
         machine.ChangeHost(host);
         machine.SetUsername(req.Username);
+        machine.SetRedirection(req.Redirection);
         await _repo.UpdateAsync(machine, ct);
         return machine;
     }

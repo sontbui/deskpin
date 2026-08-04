@@ -54,7 +54,9 @@ public static class DependencyInjection
         services.AddSingleton<IReachabilityProbe, TcpReachabilityProbe>();
 
         services.AddSingleton<TempRdpFileWriter>();
+        services.AddSingleton<RdpSigner>();
         services.AddSingleton<IRemoteLauncher, MstscRemoteLauncher>();
+        services.AddSingleton<IUninstallCleanup, Cleanup.UninstallCleanup>();
         return services;
     }
 
