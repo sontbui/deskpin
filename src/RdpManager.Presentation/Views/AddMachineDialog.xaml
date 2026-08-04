@@ -18,6 +18,8 @@
             <TextBox x:Name="PortBox" Grid.Column="1" Header="Port" Text="3389" />
         </Grid>
         <TextBox x:Name="UserBox" Header="Username" PlaceholderText="svc_build" />
+        <PasswordBox x:Name="PasswordBox" Header="Password"
+                     PlaceholderText="leave blank to keep / prompt at connect" />
         <TextBox x:Name="TagsBox" Header="Tags (comma separated)" PlaceholderText="CI, Build" />
     </StackPanel>
 </ContentDialog>

@@ -12,6 +12,9 @@ public sealed partial class AddMachineDialog : ContentDialog
     /// <summary>The captured input, or null if the user cancelled or entered invalid data.</summary>
     public CreateMachineRequest? Result { get; private set; }
 
+    /// <summary>Typed password (empty means "don't change / prompt at connect").</summary>
+    public string Password => PasswordBox.Password ?? string.Empty;
+
     public AddMachineDialog()
     {
         InitializeComponent();

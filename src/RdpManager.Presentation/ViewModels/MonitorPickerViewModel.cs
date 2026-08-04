@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,16 +15,19 @@ using RdpManager.Presentation.Services;
 
 namespace RdpManager.Presentation.ViewModels;
 
-/// <summary>One selectable monitor tile — positions, never indexes, are what the user sees.</summary>
+/// <summary>One selectable monitor tile. Positions — never indexes — are what the user sees.</summary>
 public sealed partial class MonitorTileViewModel : ObservableObject
 {
     public required MonitorInfo Live { get; init; }
     public string Label { get; init; } = "";
     public string Resolution => $"{Live.Geometry.Width}×{Live.Geometry.Height}";
-    public bool IsPrimary => Live.IsPrimary;
     public double X => Live.Geometry.X;
-    public double Y => Live.Geometry.Y;
+
+    /// <summary>Selected to be part of the remote session.</summary>
     [ObservableProperty] private bool _isSelected;
+
+    /// <summary>The one selected monitor that becomes the remote session's PRIMARY (listed first).</summary>
+    [ObservableProperty] private bool _isSessionPrimary;
 }
 
 public sealed partial class MonitorPickerViewModel : ObservableObject
@@ -34,7 +40,6 @@ public sealed partial class MonitorPickerViewModel : ObservableObject
     public ObservableCollection<MonitorTileViewModel> Monitors { get; } = new();
     [ObservableProperty] private bool _isSingleDisplayHost;
 
-    /// <summary>Raised when the profile is saved so the host dialog can close.</summary>
     public event Action? Saved;
 
     public MonitorPickerViewModel(IDisplayTopologyProvider topology, MachineService machines, IToastService toasts)
@@ -48,13 +53,44 @@ public sealed partial class MonitorPickerViewModel : ObservableObject
         var topo = await _topology.GetCurrentAsync(ct);
         IsSingleDisplayHost = topo.Count <= 1;
 
+        foreach (var t in Monitors) t.PropertyChanged -= OnTileChanged;
         Monitors.Clear();
+
         foreach (var (m, label) in Label(topo))
-            Monitors.Add(new MonitorTileViewModel { Live = m, Label = label, IsSelected = m.IsPrimary });
+        {
+            var tile = new MonitorTileViewModel { Live = m, Label = label, IsSelected = m.IsPrimary };
+            tile.PropertyChanged += OnTileChanged;
+            Monitors.Add(tile);
+        }
+        EnsureSessionPrimary();
     }
 
-    [RelayCommand]
-    private void ToggleMonitor(MonitorTileViewModel tile) => tile.IsSelected = !tile.IsSelected;
+    private void OnTileChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MonitorTileViewModel.IsSelected))
+            EnsureSessionPrimary();
+    }
+
+    // Exactly one selected monitor must be the session primary; default to the left-most selected.
+    private void EnsureSessionPrimary()
+    {
+        var selected = Monitors.Where(m => m.IsSelected).ToList();
+        foreach (var m in Monitors)
+            if (m.IsSessionPrimary && !m.IsSelected) m.IsSessionPrimary = false;
+
+        if (selected.Count > 0 && !selected.Any(m => m.IsSessionPrimary))
+        {
+            var leftMost = selected.OrderBy(m => m.X).First();
+            leftMost.IsSessionPrimary = true;
+        }
+    }
+
+    /// <summary>Marks a selected monitor as the remote session's primary.</summary>
+    public void SetSessionPrimary(MonitorTileViewModel tile)
+    {
+        if (tile is null || !tile.IsSelected) return;
+        foreach (var m in Monitors) m.IsSessionPrimary = ReferenceEquals(m, tile);
+    }
 
     [RelayCommand]
     private void UseAllScreens()
@@ -62,32 +98,31 @@ public sealed partial class MonitorPickerViewModel : ObservableObject
         foreach (var t in Monitors) t.IsSelected = true;
     }
 
-    public bool CanSave => Monitors.Any(m => m.IsSelected);
-
     [RelayCommand]
     private async Task SaveAsync(CancellationToken ct)
     {
         var selected = Monitors.Where(m => m.IsSelected).ToList();
         if (selected.Count == 0) return;
 
-        // Persist as fingerprints (identity + geometry) — never the OS index.
-        var fingerprints = selected.Select((t, i) => new MonitorFingerprint(
+        // The session primary goes FIRST — RDP treats the first entry of selectedmonitors as the
+        // remote primary. The rest follow left-to-right. Physical-primary is irrelevant here.
+        var primary = selected.FirstOrDefault(m => m.IsSessionPrimary) ?? selected.OrderBy(m => m.X).First();
+        var ordered = new List<MonitorTileViewModel> { primary };
+        ordered.AddRange(selected.Where(m => !ReferenceEquals(m, primary)).OrderBy(m => m.X));
+
+        var fingerprints = ordered.Select((t, i) => new MonitorFingerprint(
             i, t.Live.Geometry, t.Live.DevicePath, t.Live.IsPrimary,
             t.Live.EdidManufacturer, t.Live.EdidProductCode, t.Live.EdidSerial)).ToList();
 
         var result = await _machines.ConfigureDisplayAsync(_machineId, fingerprints, ct);
         if (result.IsSuccess)
         {
-            _toasts.Show("Monitor positions saved.");
+            _toasts.Show($"Saved {fingerprints.Count} screen(s).");
             Saved?.Invoke();
         }
     }
 
-    /// <summary>
-    /// Orders monitors left-to-right by their real X position and labels them by that position
-    /// (Left / Center / Right / Middle N). "primary" is only a suffix — it does NOT decide the
-    /// position, so a primary on the far left is correctly labelled "Left · primary".
-    /// </summary>
+    /// <summary>Orders monitors left-to-right by real X and labels them by position (not by primary).</summary>
     private static IEnumerable<(MonitorInfo, string)> Label(DisplayTopology topo)
     {
         var ordered = topo.Monitors.OrderBy(m => m.Geometry.X).ThenBy(m => m.Geometry.Y).ToList();
@@ -99,7 +134,7 @@ public sealed partial class MonitorPickerViewModel : ObservableObject
                 : i == 0 ? "Left"
                 : i == n - 1 ? "Right"
                 : n == 3 ? "Center" : $"Middle {i}";
-            yield return (m, m.IsPrimary ? $"{pos} · primary" : pos);
+            yield return (m, m.IsPrimary ? $"{pos} · main" : pos);
         }
     }
 }

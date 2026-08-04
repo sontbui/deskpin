@@ -20,18 +20,21 @@
         </Grid>
 
         <NavigationView Grid.Row="1" x:Name="Nav" PaneDisplayMode="LeftCompact"
-                        IsSettingsVisible="True" SelectionChanged="OnNavSelectionChanged">
+                        IsSettingsVisible="False" SelectionChanged="OnNavSelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Machines" Tag="Machines" IsSelected="True">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="AllApps" /></NavigationViewItem.Icon>
-                </NavigationViewItem>
-                <NavigationViewItem Content="Groups" Tag="Groups">
-                    <NavigationViewItem.Icon><SymbolIcon Symbol="ViewAll" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem Content="Activity" Tag="Activity">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Clock" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
+
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Content="Info" Tag="Info">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE946;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
 
             <Frame x:Name="ContentFrame" />
         </NavigationView>

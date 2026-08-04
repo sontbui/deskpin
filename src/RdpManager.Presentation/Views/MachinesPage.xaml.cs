@@ -58,7 +58,7 @@ public sealed partial class MachinesPage : Page
     {
         var dialog = new AddMachineDialog { XamlRoot = XamlRoot };
         if (await dialog.ShowAsync() == ContentDialogResult.Primary && dialog.Result is not null)
-            await Vm.AddMachineAsync(dialog.Result, CancellationToken.None);
+            await Vm.AddMachineAsync(dialog.Result, dialog.Password, CancellationToken.None);
     }
 
     private async void OnEditItem(object sender, RoutedEventArgs e)
@@ -68,7 +68,7 @@ public sealed partial class MachinesPage : Page
         var dialog = new AddMachineDialog { XamlRoot = XamlRoot };
         dialog.Prefill(Vm.Selected.Model);
         if (await dialog.ShowAsync() == ContentDialogResult.Primary && dialog.Result is not null)
-            await Vm.EditMachineAsync(machineId, dialog.Result, CancellationToken.None);
+            await Vm.EditMachineAsync(machineId, dialog.Result, dialog.Password, CancellationToken.None);
     }
 
     // View mechanics only: host the picker VM in a dialog. The decision to open came from the VM.

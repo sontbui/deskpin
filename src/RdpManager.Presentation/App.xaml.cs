@@ -70,6 +70,7 @@ public partial class App : Microsoft.UI.Xaml.Application
                 services.AddTransient<MachineDetailViewModel>();
                 services.AddTransient<MonitorPickerViewModel>();
                 services.AddTransient<CommandPaletteViewModel>();
+                services.AddTransient<ActivityViewModel>();
                 // Factory so the master VM can spin up a fresh picker per configure request.
                 services.AddSingleton<Func<MonitorPickerViewModel>>(sp => sp.GetRequiredService<MonitorPickerViewModel>);
 

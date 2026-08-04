@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
 using RdpManager.Application.Abstractions;
 using RdpManager.Infrastructure.Rdp;
 
@@ -30,6 +31,8 @@ public sealed class MstscRemoteLauncher : IRemoteLauncher
             throw new PlatformNotSupportedException("mstsc is only available on Windows.");
 
         var path = await _writer.WriteAsync(rdpFileText, ct);
+        WriteDiagnosticCopy(rdpFileText); // persistent, non-secret copy for troubleshooting
+        PreAuthorizeRedirection(rdpFileText); // so mstsc doesn't prompt "Allow resources…" each time
         Process? process = null;
         try
         {
@@ -62,5 +65,50 @@ public sealed class MstscRemoteLauncher : IRemoteLauncher
     {
         try { await Task.Delay(ReadGrace); }
         finally { _writer.DeleteQuietly(path); }
+    }
+
+    // Pre-approves local resource redirection for this host so mstsc stops showing the
+    // "Allow the remote computer to access the following resources" consent every launch.
+    // Writes HKCU\Software\Microsoft\Terminal Server Client\LocalDevices\<full address> = allow mask.
+    private void PreAuthorizeRedirection(string rdpFileText)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var address = ExtractFullAddress(rdpFileText);
+        if (string.IsNullOrEmpty(address)) return;
+        try
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(
+                @"Software\Microsoft\Terminal Server Client\LocalDevices");
+            key.SetValue(address, 0x4C, RegistryValueKind.DWord); // clipboard/drives/ports consent
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not pre-authorize redirection for the host.");
+        }
+    }
+
+    private static string? ExtractFullAddress(string rdp)
+    {
+        foreach (var line in rdp.Split('\n'))
+            if (line.StartsWith("full address:s:", StringComparison.OrdinalIgnoreCase))
+                return line["full address:s:".Length..].Trim();
+        return null;
+    }
+
+    // Keeps the exact .rdp of the most recent launch (no password inside) at
+    // %LOCALAPPDATA%\Deskpin\last-launch.rdp so multi-monitor issues can be inspected.
+    private void WriteDiagnosticCopy(string rdpFileText)
+    {
+        try
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Deskpin");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "last-launch.rdp"), rdpFileText);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not write diagnostic rdp copy.");
+        }
     }
 }

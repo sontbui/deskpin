@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -71,8 +72,8 @@ public sealed partial class MachinesViewModel : ObservableObject
 
     partial void OnSearchChanged(string value) => _ = LoadAsync(CancellationToken.None);
 
-    /// <summary>Creates a machine from dialog input, then reloads and selects it.</summary>
-    public async Task AddMachineAsync(CreateMachineRequest request, CancellationToken ct)
+    /// <summary>Creates a machine from dialog input (optionally storing a password), then selects it.</summary>
+    public async Task AddMachineAsync(CreateMachineRequest request, string? password, CancellationToken ct)
     {
         var result = await _machines.CreateAsync(request, ct);
         if (!result.IsSuccess)
@@ -80,12 +81,13 @@ public sealed partial class MachinesViewModel : ObservableObject
             await _dialogs.ErrorAsync("Couldn't add machine", result.Error!.Message);
             return;
         }
+        await SavePasswordIfProvided(result.Value.Id, password, ct);
         await LoadAsync(ct);
         Selected = Machines.FirstOrDefault(m => m.Id == result.Value.Id) ?? Selected;
     }
 
-    /// <summary>Saves edits to the selected machine's basic details.</summary>
-    public async Task EditMachineAsync(Guid machineId, CreateMachineRequest request, CancellationToken ct)
+    /// <summary>Saves edits to the selected machine's basic details (and password if provided).</summary>
+    public async Task EditMachineAsync(Guid machineId, CreateMachineRequest request, string? password, CancellationToken ct)
     {
         var result = await _machines.UpdateDetailsAsync(machineId, request, ct);
         if (!result.IsSuccess)
@@ -93,8 +95,18 @@ public sealed partial class MachinesViewModel : ObservableObject
             await _dialogs.ErrorAsync("Couldn't save changes", result.Error!.Message);
             return;
         }
+        await SavePasswordIfProvided(machineId, password, ct);
         await LoadAsync(ct);
         Selected = Machines.FirstOrDefault(m => m.Id == machineId) ?? Selected;
+    }
+
+    private async Task SavePasswordIfProvided(Guid machineId, string? password, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(password)) return;
+        using var secure = new SecureString();
+        foreach (var c in password) secure.AppendChar(c);
+        secure.MakeReadOnly();
+        await _machines.SetPasswordAsync(machineId, secure, ct);
     }
 
     /// <summary>Re-opens the monitor picker for the selected machine so the user can re-choose screens.</summary>

@@ -5,9 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer>
         <StackPanel Padding="24" Spacing="14">
-            <TextBlock Text="Settings" FontSize="22" FontWeight="SemiBold" />
-            <TextBlock Opacity="0.7" TextWrapping="Wrap"
-                       Text="Credential backend, display-match confidence, launch pre-flight and theme. (Full UI is a fast-follow.)" />
+            <TextBlock Text="Info" FontSize="22" FontWeight="SemiBold" />
 
             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     CornerRadius="8" Padding="16" Margin="0,8,0,0">

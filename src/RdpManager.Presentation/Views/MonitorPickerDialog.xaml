@@ -6,23 +6,38 @@
     xmlns:vm="using:RdpManager.Presentation.ViewModels"
     Title="Which screens should this session open on?"
     PrimaryButtonText="Save &amp; remote"
+    SecondaryButtonText="Use all"
     CloseButtonText="Cancel"
     DefaultButton="Primary">
     <StackPanel Spacing="12" Width="560">
         <TextBlock TextWrapping="Wrap" Opacity="0.8"
-                   Text="Click the monitors below. We save the position you pick — not the index — so it survives dock re-plugs. You only do this once." />
+                   Text="Click the monitors to include. The one with the ★ (star) becomes the remote's primary screen — you don't need to include your own primary monitor." />
         <ItemsControl ItemsSource="{x:Bind Vm.Monitors}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:MonitorTileViewModel">
-                    <ToggleButton IsChecked="{x:Bind IsSelected, Mode=TwoWay}" Width="150" Height="96">
-                        <StackPanel>
-                            <TextBlock Text="{x:Bind Label}" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                            <TextBlock Text="{x:Bind Resolution}" FontSize="11" Opacity="0.7" HorizontalAlignment="Center" />
-                        </StackPanel>
-                    </ToggleButton>
+                    <Grid Width="150" Height="96">
+                        <ToggleButton IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                      HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                            <StackPanel>
+                                <TextBlock Text="{x:Bind Label}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                                <TextBlock Text="{x:Bind Resolution}" FontSize="11" Opacity="0.7" HorizontalAlignment="Center" />
+                                <TextBlock Text="★ PRIMARY" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                           Foreground="Black"
+                                           Visibility="{x:Bind IsSessionPrimary, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+                        </ToggleButton>
+                        <!-- Set-as-primary button, only when the tile is selected -->
+                        <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="3"
+                                Background="Transparent" BorderThickness="0" Padding="4"
+                                Click="OnSetPrimary" ToolTipService.ToolTip="Set as remote primary"
+                                Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                            <FontIcon Glyph="&#xE734;" FontSize="14" />
+                        </Button>
+                    </Grid>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>

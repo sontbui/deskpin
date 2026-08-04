@@ -1,0 +1,13 @@
+{
+  "title": "Deskpin 1.1.0",
+  "description": [
+    { "content": "One-click connect: save a machine's password (encrypted with Windows DPAPI) and Deskpin hands it to mstsc automatically — double-click a machine and you're in, no password prompt." },
+    { "content": "Multi-monitor fixed: correct monitor IDs are now derived from the live layout, so a session spans exactly the screens you picked." },
+    { "content": "Choose the remote's primary screen: mark any selected monitor with ★ to make it the session's primary. You no longer need to include your own primary monitor." },
+    { "content": "Fewer prompts: Deskpin pre-approves local resource redirection for each host, so mstsc stops asking to 'allow resources' on every launch." },
+    { "content": "Active-session dot: a green dot marks machines that currently have a live remote session, and clears when the session closes." },
+    { "content": "Monitors are labelled left-to-right by their real position (Left / Center / Right)." },
+    { "content": "What's new in the app: the About page and the update dialog now show release notes, not just a version number." },
+    { "content": "New app icon (transparent background, white monitor)." }
+  ]
+}
