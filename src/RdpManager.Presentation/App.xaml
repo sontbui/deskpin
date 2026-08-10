@@ -8,11 +8,15 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+                <!-- Nocturne design system: every color/spacing/radius token lives here. -->
+                <ResourceDictionary Source="ms-appx:///Themes/Nocturne.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <!-- Dark-first, Windows 11 Mica. Accent stays the product blurple. -->
             <SolidColorBrush x:Key="AppAccentBrush" Color="#9184D9" />
             <SolidColorBrush x:Key="ActiveSessionBrush" Color="#5BC8A3" />
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+            <conv:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
+            <conv:TransferStateToBrushConverter x:Key="TransferStateToBrush" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

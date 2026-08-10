@@ -38,7 +38,15 @@ public interface IDialogService
     Task<bool> ConfirmDeleteAsync(string machineName);
     Task<DialogChoice> LayoutChangedAsync(string message);
     Task ErrorAsync(string title, string message);
+    Task InfoAsync(string title, string message);
     Task<bool> ConfirmAsync(string title, string message, string primaryText, string closeText);
+    /// <summary>Small text-input dialog. Returns null when the user cancels.</summary>
+    Task<string?> PromptTextAsync(string title, string placeholder, string? initialText = null);
+    /// <summary>
+    /// The Files overwrite-conflict dialog: Replace / Keep both / Skip plus "apply to all".
+    /// Returns null when dismissed (treated as Skip for just that file).
+    /// </summary>
+    Task<RdpManager.Application.Files.OverwriteChoice?> OverwriteAsync(string fileName, string existingInfo, string incomingInfo);
     XamlRoot? XamlRoot { get; set; }
 }
 
@@ -82,6 +90,70 @@ public sealed class DialogService : IDialogService
     public async Task ErrorAsync(string title, string message)
     {
         await new ContentDialog { Title = title, Content = message, CloseButtonText = "OK", XamlRoot = XamlRoot }.ShowAsync();
+    }
+
+    public async Task InfoAsync(string title, string message)
+    {
+        await new ContentDialog
+        {
+            Title = title,
+            Content = new TextBlock { Text = message, TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap },
+            CloseButtonText = "Close",
+            XamlRoot = XamlRoot,
+        }.ShowAsync();
+    }
+
+    public async Task<string?> PromptTextAsync(string title, string placeholder, string? initialText = null)
+    {
+        var box = new TextBox { PlaceholderText = placeholder, Text = initialText ?? string.Empty };
+        box.SelectAll();
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = box,
+            PrimaryButtonText = "OK",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+        return await dialog.ShowAsync() == ContentDialogResult.Primary ? box.Text : null;
+    }
+
+    public async Task<RdpManager.Application.Files.OverwriteChoice?> OverwriteAsync(
+        string fileName, string existingInfo, string incomingInfo)
+    {
+        var applyToAll = new CheckBox { Content = "Apply to all conflicts in this transfer" };
+        var body = new StackPanel { Spacing = 12 };
+        body.Children.Add(new TextBlock
+        {
+            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
+            Text = $"“{fileName}” already exists in the destination. " +
+                   $"The copy there is {existingInfo}; the one you're sending is {incomingInfo}.",
+        });
+        body.Children.Add(applyToAll);
+
+        var dialog = new ContentDialog
+        {
+            Title = "Replace file?",
+            Content = body,
+            PrimaryButtonText = "Replace",
+            SecondaryButtonText = "Keep both",
+            CloseButtonText = "Skip",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot,
+        };
+
+        var result = await dialog.ShowAsync();
+        var all = applyToAll.IsChecked == true;
+        return result switch
+        {
+            ContentDialogResult.Primary => new RdpManager.Application.Files.OverwriteChoice(
+                RdpManager.Application.Files.OverwriteDecision.Replace, all),
+            ContentDialogResult.Secondary => new RdpManager.Application.Files.OverwriteChoice(
+                RdpManager.Application.Files.OverwriteDecision.KeepBoth, all),
+            _ => new RdpManager.Application.Files.OverwriteChoice(
+                RdpManager.Application.Files.OverwriteDecision.Skip, all),
+        };
     }
 
     public async Task<bool> ConfirmAsync(string title, string message, string primaryText, string closeText)

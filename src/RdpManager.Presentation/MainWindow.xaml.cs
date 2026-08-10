@@ -13,8 +13,11 @@ namespace RdpManager.Presentation;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
+    private static readonly TimeSpan ToastLifetime = TimeSpan.FromSeconds(3);
+
     private readonly IServiceProvider _services;
     private readonly IDialogService _dialogs;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _toastTimer;
 
     public MainWindow(IServiceProvider services, IDialogService dialogs)
     {
@@ -22,11 +25,11 @@ public sealed partial class MainWindow : Window
         _dialogs = dialogs;
         InitializeComponent();
 
-        Title = "Deskpin";
+        Title = "RDP Manager";
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
 
-        SizeAndCenter(720, 760); // balanced default, scaled for the monitor's DPI
+        SizeAndCenter(1200, 820); // the merged console is a wide dual-pane layout
         var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "deskpin.ico");
         if (System.IO.File.Exists(iconPath)) AppWindow?.SetIcon(iconPath);
 
@@ -39,7 +42,7 @@ public sealed partial class MainWindow : Window
         {
             _dialogs.XamlRoot = Content?.XamlRoot;
             if (ContentFrame.CurrentSourcePageType is null)
-                ContentFrame.Navigate(typeof(MachinesPage));
+                ContentFrame.Navigate(typeof(MachinesFilesPage));
         };
     }
 
@@ -50,7 +53,7 @@ public sealed partial class MainWindow : Window
         var tag = (args.SelectedItemContainer as NavigationViewItem)?.Tag as string;
         Type? target = tag switch
         {
-            "Machines" => typeof(MachinesPage),
+            "MachinesFiles" => typeof(MachinesFilesPage),
             "Activity" => typeof(ActivityPage),
             "Info" => typeof(SettingsPage),
             _ => null,
@@ -65,6 +68,18 @@ public sealed partial class MainWindow : Window
     {
         Toast.Message = message;
         Toast.IsOpen = true;
+
+        // Auto-hide after a few seconds. One shared timer: showing a new toast while an old one
+        // is visible restarts the countdown, so the latest message always gets its full lifetime.
+        if (_toastTimer is null)
+        {
+            _toastTimer = DispatcherQueue.CreateTimer();
+            _toastTimer.Interval = ToastLifetime;
+            _toastTimer.IsRepeating = false;
+            _toastTimer.Tick += (_, _) => Toast.IsOpen = false;
+        }
+        _toastTimer.Stop();
+        _toastTimer.Start();
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]

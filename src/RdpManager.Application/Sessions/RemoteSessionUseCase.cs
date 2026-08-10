@@ -44,17 +44,20 @@ public sealed class RemoteSessionUseCase
     private readonly IClock _clock;
     private readonly ILogger<RemoteSessionUseCase> _logger;
     private readonly TimeSpan _credentialGrace;
+    private readonly IDriveRedirectionSettings? _driveRedirection;
 
     public RemoteSessionUseCase(
         IMachineRepository machines, IReachabilityProbe probe, IDisplayTopologyProvider topology,
         DisplayMatcher matcher, IRdpProfileBuilder builder, ICredentialStore credentialStore,
         ICredentialInjector credentialInjector, IRemoteLauncher launcher, IHistoryRepository history,
-        IClock clock, ILogger<RemoteSessionUseCase> logger, TimeSpan? credentialGrace = null)
+        IClock clock, ILogger<RemoteSessionUseCase> logger, TimeSpan? credentialGrace = null,
+        IDriveRedirectionSettings? driveRedirection = null)
     {
         _machines = machines; _probe = probe; _topology = topology; _matcher = matcher;
         _builder = builder; _credentialStore = credentialStore; _credentialInjector = credentialInjector;
         _launcher = launcher; _history = history; _clock = clock; _logger = logger;
         _credentialGrace = credentialGrace ?? TimeSpan.FromSeconds(8);
+        _driveRedirection = driveRedirection;
     }
 
     public async Task<Result<SessionOutcome>> ExecuteAsync(Guid machineId, CancellationToken ct)
@@ -87,7 +90,20 @@ public sealed class RemoteSessionUseCase
 
         var remapped = match.Confidence.Band == MatchConfidence.Medium || !match.AllMatched;
 
-        var rdpText = _builder.Build(machine, new RdpOptions { SelectedMonitorIds = match.ResolvedMonitorIds });
+        // Per-drive redirection (Files console): when the user picked specific drives, emit them
+        // verbatim; otherwise the builder falls back to "*"/"" from the machine's flags.
+        string? driveValue = null;
+        if (_driveRedirection is not null)
+        {
+            var drives = await _driveRedirection.GetAsync(machine.Id, ct);
+            if (drives.IsEnabled) driveValue = drives.ToRdpValue();
+        }
+
+        var rdpText = _builder.Build(machine, new RdpOptions
+        {
+            SelectedMonitorIds = match.ResolvedMonitorIds,
+            DriveRedirectionValue = driveValue,
+        });
 
         // Deliver the secret to mstsc via Credential Manager (never into the .rdp).
         Task? cleanup = null;

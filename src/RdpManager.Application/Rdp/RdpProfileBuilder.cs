@@ -53,7 +53,7 @@ public sealed class RdpProfileBuilder : IRdpProfileBuilder
         var r = machine.Redirection;
         Line("redirectclipboard:i:" + Bit(r, RedirectionFlags.Clipboard));
         Line("redirectprinters:i:" + Bit(r, RedirectionFlags.Printers));
-        Line("drivestoredirect:s:" + (r.HasFlag(RedirectionFlags.Drives) ? "*" : ""));
+        Line("drivestoredirect:s:" + (options.DriveRedirectionValue ?? (r.HasFlag(RedirectionFlags.Drives) ? "*" : "")));
         Line("audiomode:i:" + (r.HasFlag(RedirectionFlags.Audio) ? "0" : "2"));   // 0 = play locally
         Line("audiocapturemode:i:" + Bit(r, RedirectionFlags.Microphone));
         Line("redirectsmartcards:i:" + Bit(r, RedirectionFlags.SmartCards));

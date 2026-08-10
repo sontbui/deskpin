@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using RdpManager.Infrastructure;
 using RdpManager.Presentation.Services;
@@ -60,7 +61,15 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
+        LogPaths.CleanupOldLogs();
+
         Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
+            .ConfigureLogging(logging =>
+            {
+                // WinExe has no console and Debug output needs a debugger — this is the
+                // provider that actually lands ILogger output on disk (Info and above).
+                logging.AddProvider(new FileLoggerProvider());
+            })
             .ConfigureServices(services =>
             {
                 services.AddApplication();
@@ -71,6 +80,7 @@ public partial class App : Microsoft.UI.Xaml.Application
                 services.AddSingleton<IDialogService, DialogService>();
                 services.AddSingleton<IToastService, ToastService>();
                 services.AddSingleton<GitHubReleaseService>();
+                services.AddSingleton<BugReportService>();
                 services.AddSingleton<ReleaseNotesReader>();
                 services.AddSingleton<UpdateChecker>();
 
@@ -81,12 +91,21 @@ public partial class App : Microsoft.UI.Xaml.Application
                 services.AddTransient<MonitorPickerViewModel>();
                 services.AddTransient<CommandPaletteViewModel>();
                 services.AddTransient<ActivityViewModel>();
+                // Singletons: the Files console (queue, pane paths) and the merged
+                // Machines & Files destination survive navigation.
+                services.AddSingleton<FilesViewModel>();
+                services.AddSingleton<MachinesFilesViewModel>();
                 // Factory so the master VM can spin up a fresh picker per configure request.
                 services.AddSingleton<Func<MonitorPickerViewModel>>(sp => sp.GetRequiredService<MonitorPickerViewModel>);
 
                 services.AddSingleton<MainWindow>();
             })
             .Build();
+
+        Host.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()
+            .CreateLogger("App")
+            .LogInformation("Deskpin v{Version} starting — logs in {Dir}",
+                typeof(App).Assembly.GetName().Version?.ToString(3), LogPaths.Directory);
 
         await Host.Services.InitializeDatabaseAsync();
 

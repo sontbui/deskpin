@@ -8,6 +8,7 @@ public enum ErrorKind
     Unreachable,
     NeedsReconfiguration,
     Cancelled,
+    PermissionDenied,
     Unexpected,
 }
 
@@ -18,6 +19,7 @@ public sealed record Error(ErrorKind Kind, string Code, string Message)
     public static Error Unreachable(string host) => new(ErrorKind.Unreachable, "unreachable", $"{host} is not reachable.");
     public static Error NeedsReconfiguration(string message) => new(ErrorKind.NeedsReconfiguration, "needs_reconfig", message);
     public static Error Cancelled() => new(ErrorKind.Cancelled, "cancelled", "The operation was cancelled.");
+    public static Error PermissionDenied(string what) => new(ErrorKind.PermissionDenied, "permission_denied", $"Access to {what} was denied.");
     public static Error Unexpected(string message) => new(ErrorKind.Unexpected, "unexpected", message);
 }
 

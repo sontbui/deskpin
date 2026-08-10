@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="RdpManager.Presentation.Views.DriveRedirectionDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Drive redirection"
+    PrimaryButtonText="Save"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary">
+
+    <StackPanel Spacing="12" MinWidth="380">
+        <TextBlock TextWrapping="Wrap" Opacity="0.75" FontSize="13"
+                   Text="Which local drives the remote session can reach. Redirection is what makes transfers here possible — turning it off closes this console." />
+
+        <ToggleSwitch x:Name="AllDrivesSwitch" Header="All drives"
+                      OnContent="Every local drive is visible to the remote"
+                      OffContent="Pick specific drives below"
+                      Toggled="OnAllDrivesToggled" />
+
+        <ItemsControl x:Name="DriveList">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="0,6" ColumnSpacing="10"
+                          BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xEDA2;" FontSize="14" Opacity="0.7" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="13.5" VerticalAlignment="Center" />
+                        <ToggleSwitch Grid.Column="2" IsOn="{Binding IsOn, Mode=TwoWay}"
+                                      OnContent="" OffContent="" MinWidth="0" Margin="0,-6" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <ToggleSwitch x:Name="DynamicSwitch" Header="USB &amp; removable"
+                      OnContent="Auto-redirect drives plugged in later"
+                      OffContent="Only the drives ticked above" />
+
+        <TextBlock TextWrapping="Wrap" FontSize="11.5" Opacity="0.55"
+                   Text="Changes apply to the next session you launch. Nothing here ever stores a password — redirection only affects what the .rdp file requests." />
+    </StackPanel>
+</ContentDialog>

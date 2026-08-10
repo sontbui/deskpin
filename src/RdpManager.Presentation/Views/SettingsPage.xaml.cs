@@ -38,6 +38,44 @@ public sealed partial class SettingsPage : Page
         RefreshSeamlessStatus();
     }
 
+    private void OnOpenLogs(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.IO.Directory.CreateDirectory(LogPaths.Directory);
+            Process.Start(new ProcessStartInfo { FileName = LogPaths.Directory, UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            // Explorer refused — nothing actionable.
+        }
+    }
+
+    private void OnReportBug(object sender, RoutedEventArgs e)
+    {
+        var title = BugTitleBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            BugStatus.Text = "Give the bug a short title first.";
+            return;
+        }
+
+        var bugs = App.Host.Services.GetRequiredService<BugReportService>();
+        var url = bugs.BuildIssueUrl(title, BugDescBox.Text ?? string.Empty, BugDiagCheck.IsChecked == true);
+        if (bugs.Open(url))
+        {
+            BugStatus.Text = "GitHub opened in your browser — review and press Submit.";
+            App.Host.Services.GetRequiredService<IToastService>()
+                .Show("Bug report drafted — finish submitting it on GitHub.");
+            BugTitleBox.Text = string.Empty;
+            BugDescBox.Text = string.Empty;
+        }
+        else
+        {
+            BugStatus.Text = $"Couldn't open the browser. Report manually at {BugReportService.IssuesUrl}";
+        }
+    }
+
     private void RefreshSeamlessStatus()
     {
         var on = IsTrusted();

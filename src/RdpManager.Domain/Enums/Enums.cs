@@ -69,3 +69,23 @@ public enum RedirectionFlags
     /// <summary>Low-risk defaults that don't trigger mstsc's consent prompt.</summary>
     Default = Clipboard | Printers | Audio,
 }
+
+/// <summary>Which way a file transfer moves relative to this machine.</summary>
+public enum TransferDirection
+{
+    /// <summary>Local → remote ("send").</summary>
+    Upload = 0,
+    /// <summary>Remote → local ("get").</summary>
+    Download = 1,
+}
+
+/// <summary>Lifecycle of one <c>TransferJob</c>. Terminal states: Completed, Failed, Skipped, Cancelled.</summary>
+public enum TransferStatus
+{
+    Queued = 0,
+    Active = 1,
+    Completed = 2,
+    Failed = 3,
+    Skipped = 4,
+    Cancelled = 5,
+}

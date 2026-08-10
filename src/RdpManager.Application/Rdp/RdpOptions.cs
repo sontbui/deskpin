@@ -10,4 +10,10 @@ public sealed record RdpOptions
     public int ScreenModeId { get; init; } = 2;
 
     public bool DynamicResolution { get; init; } = true;
+
+    /// <summary>
+    /// Explicit <c>drivestoredirect:s:</c> value (e.g. "*" or "C:;D:;DynamicDrives"). Null keeps the
+    /// legacy behavior of deriving "*"/"" from the machine's <c>RedirectionFlags.Drives</c> flag.
+    /// </summary>
+    public string? DriveRedirectionValue { get; init; }
 }

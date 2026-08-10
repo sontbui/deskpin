@@ -1,0 +1,15 @@
+{
+  "title": "Deskpin 1.2.0 — Machines & Files",
+  "description": [
+    { "content": "Machines & Files — one merged console: the machine list on the left drives a dual-pane file commander on the right (This PC ⇄ remote host), with Ping / Edit / Display / Drive redirection / Remote in the header toolbar." },
+    { "content": "File transfers over RDP drive redirection: browse both sides, drag files across the divider or use the Send/Get arrows, with live progress, throughput and ETA in a persistent transfer dock (Queue + History)." },
+    { "content": "Transfers are honest end-to-end: cancel active items, one-click Retry on failures, Skip is recorded, and overwrite conflicts ask Replace / Keep both / Skip with an apply-to-all shortcut." },
+    { "content": "Go-to-path address bar on both panes: click the breadcrumb, paste a path with \\ or /, Enter to navigate — validated before navigating, with friendly empty-folder and access-denied states." },
+    { "content": "Drive redirection panel per machine (all drives, specific drives, hot-plugged): maps straight to the .rdp drivestoredirect field. Turning it off honestly disables the Files console." },
+    { "content": "Machine list now shows live reachability and latency per machine, refreshed automatically." },
+    { "content": "Nocturne design system: single blurple accent, outlined buttons, compact dark theme applied consistently from one ResourceDictionary." },
+    { "content": "Report a bug from the Info tab — opens a pre-filled GitHub issue with optional diagnostics attached; no tokens stored in the app." },
+    { "content": "Real file logging at %LOCALAPPDATA%\\RdpManager\\logs (14-day retention), an Open-logs-folder button, and toasts that auto-hide after 3 seconds." },
+    { "content": "Security unchanged by design: passwords stay in DPAPI/Credential Manager, the generated .rdp never contains a secret, and the bug reporter and transfer engine hold no credentials." }
+  ]
+}

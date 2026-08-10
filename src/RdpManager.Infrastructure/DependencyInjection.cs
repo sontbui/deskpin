@@ -8,8 +8,10 @@ using RdpManager.Application.Rdp;
 using RdpManager.Application.Sessions;
 using RdpManager.Application.Settings;
 using RdpManager.Domain.Abstractions;
+using RdpManager.Application.Files;
 using RdpManager.Infrastructure.Credentials;
 using RdpManager.Infrastructure.Display;
+using RdpManager.Infrastructure.Files;
 using RdpManager.Infrastructure.Launching;
 using RdpManager.Infrastructure.Persistence;
 using RdpManager.Infrastructure.Persistence.Repositories;
@@ -33,6 +35,10 @@ public static class DependencyInjection
         services.AddTransient<HistoryService>();
         services.AddTransient<SettingsService>();
         services.AddTransient<RemoteSessionUseCase>();
+
+        // Singleton on purpose: the transfer queue is shared app-wide state the dock observes.
+        services.AddSingleton<FileTransferUseCase>();
+        services.AddSingleton<IFileTransferService>(sp => sp.GetRequiredService<FileTransferUseCase>());
         return services;
     }
 
@@ -57,6 +63,12 @@ public static class DependencyInjection
         services.AddSingleton<RdpSigner>();
         services.AddSingleton<IRemoteLauncher, MstscRemoteLauncher>();
         services.AddSingleton<IUninstallCleanup, Cleanup.UninstallCleanup>();
+
+        // Files console: both sides of the commander plus the redirection setting.
+        services.AddSingleton<ILocalFileSystem, LocalFileSystem>();
+        services.AddSingleton(new RemoteFileSystemOptions());
+        services.AddSingleton<IRemoteFileSystem, RemoteFileSystem>();
+        services.AddSingleton<IDriveRedirectionSettings, DriveRedirectionSettingsStore>();
         return services;
     }
 
