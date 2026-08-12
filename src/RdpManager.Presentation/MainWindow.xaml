@@ -13,8 +13,8 @@
         <!-- Custom Windows 11 caption bar with a centered command bar -->
         <Grid x:Name="AppTitleBar" Height="40" Background="{StaticResource CaptionBrush}">
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="14,0,0,0">
-                <!-- Logo mark: monitor glyph with its pin/stand, 14px, accent line icon. -->
-                <PathIcon Data="M1 2.5 H15 V11 H1 Z M2.4 3.9 H13.6 V9.6 H2.4 Z M7.3 11 H8.7 V13.2 H7.3 Z M4.8 13.2 H11.2 V14.6 H4.8 Z"
+                <!-- Logo mark: Aperture Pin — diamond ring with a center pupil (even-odd fill), 14px accent. -->
+                <PathIcon Data="F0 M8 1 L15 8 L8 15 L1 8 Z M8 4 L12 8 L8 12 L4 8 Z M8 6.4 L9.6 8 L8 9.6 L6.4 8 Z"
                           Foreground="{StaticResource AccentBrush}" Width="14" Height="14"
                           />
                 <TextBlock Text="RDP Manager" VerticalAlignment="Center"

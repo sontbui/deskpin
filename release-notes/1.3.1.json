@@ -1,0 +1,14 @@
+{
+  "title": "Deskpin 1.3.1 — New app icon",
+  "description": [
+    {
+      "content": "Deskpin has a brand-new icon — \"Aperture Pin\": a diamond aperture with a centered pin on a blurple squircle. It's distinctive, reads cleanly at every size, and replaces the old monitor glyph everywhere — taskbar, window, installer shortcuts and the in-app title bar."
+    },
+    {
+      "content": "The icon is rebuilt with crisp per-size renders (16, 24, 32, 48, 64, 128 and 256px), so it stays sharp on the taskbar and in Explorer instead of being downscaled from a single image."
+    },
+    {
+      "content": "No functional changes — this is a visual refresh on top of 1.3.0's SFTP file transfers."
+    }
+  ]
+}

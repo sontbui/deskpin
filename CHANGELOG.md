@@ -5,6 +5,11 @@ All notable changes to Deskpin are documented here. The version numbers follow
 
 The CI release workflow reads the section matching the pushed tag and uses it as the GitHub Release body.
 
+## [1.3.1] - 2026-08-12
+
+### Changed
+- **New app icon — "Aperture Pin".** A fresh, distinctive mark (a diamond aperture with a centered pin) on a blurple squircle, redrawn crisp at every size from 16 to 256px. It replaces the old monitor glyph across the taskbar, window, installer shortcuts and the in-app title bar.
+
 ## [1.3.0] - 2026-08-12
 
 ### Changed
