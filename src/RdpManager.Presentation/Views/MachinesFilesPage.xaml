@@ -59,6 +59,7 @@
                                         <MenuFlyoutItem Text="Configure display…" Click="OnConfigureItem" />
                                         <MenuFlyoutItem Text="Ping" Click="OnPingItem" />
                                         <MenuFlyoutItem Text="Edit" Click="OnEditItem" />
+                                        <MenuFlyoutItem Text="Enable file access…" Click="OnEnableFileAccessItem" />
                                         <MenuFlyoutSeparator />
                                         <MenuFlyoutItem Text="Delete" Click="OnDeleteItem" />
                                     </MenuFlyout>
@@ -159,7 +160,8 @@
                     </StackPanel>
                 </Button>
                 <Button Grid.Column="5" Style="{StaticResource PrimaryButtonStyle}" FontSize="13" Padding="13,5"
-                        IsEnabled="{x:Bind Vm.HasSelection, Mode=OneWay}" Click="OnRemoteClick">
+                        IsEnabled="{x:Bind Vm.CanRemote, Mode=OneWay}" Click="OnRemoteClick"
+                        ToolTipService.ToolTip="Launch mstsc (disabled for macOS machines)">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <FontIcon Glyph="&#xE8A7;" FontSize="13" />
                         <TextBlock Text="Remote" />

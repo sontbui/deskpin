@@ -53,9 +53,26 @@ public interface ILocalFileSystem : IFileSystemBrowser
 /// </summary>
 public interface IRemoteFileSystem : IFileSystemBrowser
 {
+    /// <summary>
+    /// Points the bridge at a machine. Drive-letter paths map to that host's SMB admin shares
+    /// (<c>C:\Users</c> → <c>\\host\C$\Users</c>); UNC paths pass through untouched.
+    /// </summary>
+    void SetTarget(string? host);
+
     /// <summary>Upload: writes <paramref name="source"/> to <paramref name="remotePath"/>, replacing any existing file.</summary>
     Task CopyInAsync(Stream source, string remotePath, IProgress<long>? progress, CancellationToken ct);
 
     /// <summary>Download: reads <paramref name="remotePath"/> into <paramref name="destination"/>.</summary>
     Task CopyOutAsync(string remotePath, Stream destination, IProgress<long>? progress, CancellationToken ct);
+}
+
+/// <summary>
+/// Establishes an authenticated SMB session to a host using the machine's stored credential
+/// (DPAPI-protected; revealed only transiently for the connection call — never persisted as
+/// plaintext). Best-effort: failures are logged, and browsing surfaces its own errors.
+/// </summary>
+public interface IRemoteShareAuthenticator
+{
+    /// <summary>Returns null when signed in (or nothing to do); otherwise a user-facing failure message.</summary>
+    Task<string?> EnsureAsync(Guid machineId, string host, CancellationToken ct);
 }

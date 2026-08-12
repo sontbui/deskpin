@@ -20,6 +20,7 @@ public sealed class Machine
     public DisplayProfile? DisplayProfile { get; private set; }
     public string? Gateway { get; private set; }
     public RedirectionFlags Redirection { get; private set; } = RedirectionFlags.Clipboard;
+    public MachineOs Os { get; private set; } = MachineOs.Windows;
     public string? Notes { get; private set; }
     public bool IsFavorite { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
@@ -51,6 +52,7 @@ public sealed class Machine
     public void SetGateway(string? gateway) => Gateway = string.IsNullOrWhiteSpace(gateway) ? null : gateway.Trim();
     public void SetNotes(string? notes) => Notes = notes;
     public void SetRedirection(RedirectionFlags flags) => Redirection = flags;
+    public void SetOs(MachineOs os) => Os = os;
     public void ToggleFavorite(bool value) => IsFavorite = value;
     public void MarkConnected(DateTimeOffset when) => LastConnectedAt = when;
 

@@ -31,6 +31,7 @@ public sealed partial class AddMachineDialog : ContentDialog
         PortBox.Text = machine.Host.Port.ToString(System.Globalization.CultureInfo.InvariantCulture);
         UserBox.Text = machine.Username ?? string.Empty;
         TagsBox.Text = string.Join(", ", machine.Tags.Select(t => t.Name));
+        OsBox.SelectedIndex = (int)machine.Os;
         ApplyRedirection(machine.Redirection);
     }
 
@@ -76,6 +77,7 @@ public sealed partial class AddMachineDialog : ContentDialog
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         var username = string.IsNullOrWhiteSpace(UserBox.Text) ? null : UserBox.Text.Trim();
-        Result = new CreateMachineRequest(name, host, port, username, tags, null, null, ReadRedirection());
+        var os = OsBox.SelectedIndex is >= 0 and <= 2 ? (MachineOs)OsBox.SelectedIndex : MachineOs.Windows;
+        Result = new CreateMachineRequest(name, host, port, username, tags, null, null, ReadRedirection(), os);
     }
 }

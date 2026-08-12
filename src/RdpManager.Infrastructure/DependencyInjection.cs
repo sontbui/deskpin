@@ -66,9 +66,10 @@ public static class DependencyInjection
 
         // Files console: both sides of the commander plus the redirection setting.
         services.AddSingleton<ILocalFileSystem, LocalFileSystem>();
-        services.AddSingleton(new RemoteFileSystemOptions());
         services.AddSingleton<IRemoteFileSystem, RemoteFileSystem>();
         services.AddSingleton<IDriveRedirectionSettings, DriveRedirectionSettingsStore>();
+        services.AddSingleton<IRemoteShareAuthenticator, SmbShareAuthenticator>();
+        services.AddSingleton<IRemoteAdminSetup, RemoteAdminSetup>();
         return services;
     }
 
@@ -82,5 +83,22 @@ public static class DependencyInjection
         var factory = provider.GetRequiredService<IDbContextFactory<AppDbContext>>();
         await using var db = await factory.CreateDbContextAsync(ct);
         await db.Database.EnsureCreatedAsync(ct);
+
+        // Lightweight in-place migration: EnsureCreated never alters an existing schema, so
+        // databases created before Machine.Os existed need the column added by hand.
+        var hasOs = false;
+        var connection = db.Database.GetDbConnection();
+        await connection.OpenAsync(ct);
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Machines');";
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+                if (string.Equals(reader.GetString(1), "Os", StringComparison.OrdinalIgnoreCase))
+                    hasOs = true;
+        }
+        if (!hasOs)
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE Machines ADD COLUMN \"Os\" INTEGER NOT NULL DEFAULT 0;", ct);
     }
 }

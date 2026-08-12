@@ -3,43 +3,42 @@ using RdpManager.Application.Files;
 
 namespace RdpManager.Infrastructure.Files;
 
-/// <summary>Where the drive-redirection bridge is mounted. Default is mstsc's <c>\\tsclient</c> share.</summary>
-public sealed record RemoteFileSystemOptions
-{
-    public string UncRoot { get; init; } = @"\\tsclient";
-}
-
 /// <summary>
-/// <see cref="IRemoteFileSystem"/> over the RDP redirected-drive UNC bridge: a remote path like
-/// <c>C:\Users\svc</c> maps to <c>&lt;UncRoot&gt;\C\Users\svc</c> (the way mstsc exposes redirected
-/// drives as <c>\\tsclient\C</c>). Copies stream in 256 KiB chunks and report cumulative bytes
-/// through <see cref="IProgress{T}"/> so the transfer dock shows live progress, and honor the
-/// <see cref="CancellationToken"/> between chunks. A cancelled or failed copy removes its partial
-/// destination file — no half-written files are left behind.
+/// <see cref="IRemoteFileSystem"/> over SMB. A remote drive path like <c>C:\Users\svc</c> maps to
+/// the target host's administrative share — <c>\\host\C$\Users\svc</c> — which is what is actually
+/// reachable from the local machine. (<c>\\tsclient</c> only exists *inside* the remote session:
+/// it is how the remote sees the local drives, so it can never be browsed from here.)
+/// UNC paths (Samba homes like <c>\\host\svc</c>) pass through untouched.
+/// Copies stream in 256 KiB chunks, report cumulative bytes through <see cref="IProgress{T}"/>,
+/// honor the <see cref="CancellationToken"/> between chunks, and never leave a partial file behind.
 /// </summary>
 public sealed class RemoteFileSystem : IRemoteFileSystem
 {
     private const int CopyBufferSize = 256 * 1024;
 
-    private readonly RemoteFileSystemOptions _options;
     private readonly ILogger<RemoteFileSystem> _logger;
+    private volatile string? _host;
 
-    public RemoteFileSystem(RemoteFileSystemOptions options, ILogger<RemoteFileSystem> logger)
+    public RemoteFileSystem(ILogger<RemoteFileSystem> logger) => _logger = logger;
+
+    public void SetTarget(string? host)
     {
-        _options = options;
-        _logger = logger;
+        _host = string.IsNullOrWhiteSpace(host) ? null : host.Trim();
+        _logger.LogInformation("Remote file bridge target: {Host}", _host ?? "(none)");
     }
 
-    /// <summary>Maps a remote drive path onto the redirection bridge. UNC input passes through untouched.</summary>
+    /// <summary>Maps a remote path onto what this machine can reach. UNC input passes through.</summary>
     internal string MapToBridge(string remotePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(remotePath);
         var path = remotePath.Trim();
         if (path.StartsWith(@"\\", StringComparison.Ordinal)) return path;
+
         if (path.Length >= 2 && char.IsAsciiLetter(path[0]) && path[1] == ':')
         {
+            var host = _host ?? throw new InvalidOperationException("Select a machine first.");
             var rest = path.Length > 2 ? path[2..].TrimStart('\\') : string.Empty;
-            var root = $@"{_options.UncRoot}\{char.ToUpperInvariant(path[0])}";
+            var root = $@"\\{host}\{char.ToUpperInvariant(path[0])}$";
             return rest.Length == 0 ? root : $@"{root}\{rest}";
         }
         throw new ArgumentException($"'{remotePath}' is not an absolute remote path.", nameof(remotePath));
@@ -49,19 +48,58 @@ public sealed class RemoteFileSystem : IRemoteFileSystem
         Task.Run<IReadOnlyList<FileSystemEntry>>(() =>
         {
             var mapped = MapToBridge(path);
-            var dir = new DirectoryInfo(mapped);
-            if (!dir.Exists) throw new DirectoryNotFoundException($"Directory not found: {path}");
-
             var entries = new List<FileSystemEntry>();
-            foreach (var info in dir.EnumerateFileSystemInfos("*", LocalFileSystem.ListingOptions))
+            try
             {
-                ct.ThrowIfCancellationRequested();
-                // Report the *remote-shaped* path back to the UI, not the bridge path.
-                var entry = LocalFileSystem.ToEntry(info);
-                entries.Add(entry with { FullPath = UnmapFromBridge(entry.FullPath, path) });
+                // No Exists() pre-check: it swallows the real SMB error (wrong password, no
+                // admin rights, port blocked all look like "false"). Enumerate directly and
+                // diagnose on failure instead. UnauthorizedAccessException flows through
+                // untouched — that is the pane's Access-denied state.
+                foreach (var info in new DirectoryInfo(mapped).EnumerateFileSystemInfos("*", LocalFileSystem.ListingOptions))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    // Report the *remote-shaped* path back to the UI, not the bridge path.
+                    var entry = LocalFileSystem.ToEntry(info);
+                    entries.Add(entry with { FullPath = UnmapFromBridge(entry.FullPath, path) });
+                }
+            }
+            catch (Exception ex) when (ex is DirectoryNotFoundException or IOException)
+            {
+                throw new DirectoryNotFoundException(DescribeUnreachable(path, mapped), ex);
             }
             return LocalFileSystem.SortListing(entries);
         }, ct);
+
+    /// <summary>
+    /// Figures out WHY a bridge path failed: probes the share root so the message carries the
+    /// actual Windows error (logon failure, port unreachable, …) instead of a generic not-found.
+    /// </summary>
+    private string DescribeUnreachable(string remotePath, string mappedPath)
+    {
+        var root = ShareRootOf(mappedPath);
+        try
+        {
+            _ = Directory.EnumerateFileSystemEntries(root).Any(); // forces a real SMB round-trip
+            // The share itself answers — the specific folder just isn't there.
+            return $"{remotePath} doesn't exist on the remote ({root} is reachable). " +
+                   "Note: the profile folder name can differ from the login name.";
+        }
+        catch (Exception rootEx)
+        {
+            _logger.LogWarning(rootEx, "Share root {Root} is unreachable", root);
+            return $"Can't open {root}: {rootEx.Message} " +
+                   "Checklist: save the machine's password in Edit (SMB sign-in), the account needs admin rights " +
+                   "on the remote for C$, SMB port 445 must be reachable, and workgroup machines need " +
+                   "LocalAccountTokenFilterPolicy=1 for admin shares.";
+        }
+    }
+
+    /// <summary>"\\host\C$\Users\x" → "\\host\C$".</summary>
+    private static string ShareRootOf(string uncPath)
+    {
+        var parts = uncPath.TrimStart('\\').Split('\\');
+        return parts.Length >= 2 ? $@"\\{parts[0]}\{parts[1]}" : uncPath;
+    }
 
     public Task<FileSystemEntry?> StatAsync(string path, CancellationToken ct) =>
         Task.Run<FileSystemEntry?>(() =>

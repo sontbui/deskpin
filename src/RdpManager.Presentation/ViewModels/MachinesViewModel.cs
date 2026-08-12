@@ -132,6 +132,12 @@ public sealed partial class MachinesViewModel : ObservableObject
     private async Task RemoteAsync(CancellationToken ct)
     {
         if (Selected is null) return;
+        if (Selected.Model.Os == Domain.Enums.MachineOs.MacOs)
+        {
+            // macOS has no RDP server — honest refusal instead of a failing mstsc window.
+            _toasts.Show($"{Selected.Name} is a macOS machine — RDP isn't available.");
+            return;
+        }
         var machineId = Selected.Id;
         var result = await _remote.ExecuteAsync(machineId, ct);
         await HandleOutcomeAsync(machineId, result, ct);

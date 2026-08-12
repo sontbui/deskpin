@@ -21,9 +21,10 @@ namespace RdpManager.Presentation.ViewModels;
 /// </summary>
 public sealed partial class FilesViewModel : ObservableObject
 {
-    private const string DefaultRemotePath = @"C:\";
+    private string _defaultRemotePath = @"C:\";
 
     private readonly IFileTransferService _transfers;
+    private readonly IRemoteShareAuthenticator _shareAuth;
     private readonly IDriveRedirectionSettings _driveRedirection;
     private readonly IDialogService _dialogs;
     private readonly IToastService _toasts;
@@ -34,10 +35,12 @@ public sealed partial class FilesViewModel : ObservableObject
     private TransferEndpoint? _dragSource;
 
     public FilesViewModel(
-        IFileTransferService transfers, IDriveRedirectionSettings driveRedirection,
+        IFileTransferService transfers, IRemoteShareAuthenticator shareAuth,
+        IDriveRedirectionSettings driveRedirection,
         IDialogService dialogs, IToastService toasts, IDispatcherService dispatcher)
     {
         _transfers = transfers;
+        _shareAuth = shareAuth;
         _driveRedirection = driveRedirection;
         _dialogs = dialogs;
         _toasts = toasts;
@@ -80,6 +83,9 @@ public sealed partial class FilesViewModel : ObservableObject
     partial void OnSelectedMachineChanged(MachineItemViewModel? value) =>
         _ = GuardedMachineChangeAsync(value);
 
+    /// <summary>Re-runs the machine-change flow (re-auth SMB + reload remote pane) for the current selection.</summary>
+    public Task RefreshForSelectedAsync() => GuardedMachineChangeAsync(SelectedMachine);
+
     private async Task GuardedMachineChangeAsync(MachineItemViewModel? value)
     {
         try
@@ -99,6 +105,7 @@ public sealed partial class FilesViewModel : ObservableObject
     {
         if (machine is null)
         {
+            _transfers.SetRemoteTarget(null);
             IsRedirectionOn = false;
             ConnectionText = "Select a machine on the left — transfers ride its RDP session.";
             NotifyConsoleState();
@@ -109,11 +116,18 @@ public sealed partial class FilesViewModel : ObservableObject
         ConnectionText = $"Files on {model.Name} · {machine.HostLine}";
         RemotePane.Title = model.Name;
 
+        // Point the SMB bridge at this host, sign in to its shares with the stored credential
+        // (best-effort), and land straight in the user's home per OS.
+        _transfers.SetRemoteTarget(model.Host.Host);
+        var signInProblem = await _shareAuth.EnsureAsync(machine.Id, model.Host.Host, CancellationToken.None);
+        if (signInProblem is not null) _toasts.Show(signInProblem);
+        _defaultRemotePath = RemoteHome.PathFor(model.Os, model.Username, model.Host.Host);
+
         var redirection = await _driveRedirection.GetAsync(machine.Id, CancellationToken.None);
         ApplyRedirectionState(redirection);
 
         if (IsRedirectionOn)
-            await RemotePane.NavigateAsync(DefaultRemotePath);
+            await RemotePane.NavigateAsync(_defaultRemotePath);
         NotifyConsoleState();
     }
 
@@ -151,7 +165,7 @@ public sealed partial class FilesViewModel : ObservableObject
         ApplyRedirectionState(value);
 
         if (IsRedirectionOn && string.IsNullOrEmpty(RemotePane.CurrentPath))
-            await RemotePane.NavigateAsync(DefaultRemotePath);
+            await RemotePane.NavigateAsync(_defaultRemotePath);
         _toasts.Show(IsRedirectionOn
             ? "Drive redirection updated. It applies to the next session you launch."
             : "Drive redirection is off — the Files console is disabled for this machine.");

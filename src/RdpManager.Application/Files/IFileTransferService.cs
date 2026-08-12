@@ -32,6 +32,9 @@ public interface IFileTransferService
     /// <summary>Where the local pane opens by default.</summary>
     string DefaultLocalDirectory { get; }
 
+    /// <summary>Points the remote side of the console at a machine (null = none selected).</summary>
+    void SetRemoteTarget(string? host);
+
     // ── Transfers ───────────────────────────────────────────────────────────
     /// <summary>Stats every source and destination; splits requests into ready-to-queue and name conflicts.</summary>
     Task<Result<TransferPlan>> PlanAsync(IReadOnlyList<TransferRequest> requests, CancellationToken ct);

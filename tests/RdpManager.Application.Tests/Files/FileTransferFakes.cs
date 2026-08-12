@@ -137,6 +137,9 @@ internal sealed class FakeLocalFileSystem : FakeFileSystemBase, ILocalFileSystem
 
 internal sealed class FakeRemoteFileSystem : FakeFileSystemBase, IRemoteFileSystem
 {
+    public string? Target;
+    public void SetTarget(string? host) => Target = host;
+
     public int ChunkSize = 4;
     /// <summary>Copies that should fail with "Connection reset" before one succeeds (retry tests).</summary>
     public int FailuresBeforeSuccess;

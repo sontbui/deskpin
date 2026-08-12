@@ -70,6 +70,14 @@ public enum RedirectionFlags
     Default = Clipboard | Printers | Audio,
 }
 
+/// <summary>What runs on the remote box. Linux takes RDP (xrdp); macOS does not.</summary>
+public enum MachineOs
+{
+    Windows = 0,
+    Linux = 1,
+    MacOs = 2,
+}
+
 /// <summary>Which way a file transfer moves relative to this machine.</summary>
 public enum TransferDirection
 {

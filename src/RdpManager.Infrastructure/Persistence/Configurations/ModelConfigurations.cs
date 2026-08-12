@@ -17,6 +17,7 @@ public sealed class MachineConfiguration : IEntityTypeConfiguration<Machine>
         b.Property(m => m.IsFavorite);
         b.Property(m => m.DisplayMode).HasConversion<int>();
         b.Property(m => m.Redirection).HasConversion<int>();
+        b.Property(m => m.Os).HasConversion<int>();
         b.Property(m => m.CreatedAt);
         b.Property(m => m.LastConnectedAt);
 

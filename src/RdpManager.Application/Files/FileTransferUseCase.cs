@@ -38,6 +38,8 @@ public sealed class FileTransferUseCase : IFileTransferService
 
     public string DefaultLocalDirectory => _local.DefaultDirectory;
 
+    public void SetRemoteTarget(string? host) => _remote.SetTarget(host);
+
     public IReadOnlyList<TransferItem> Queue
     {
         get { lock (_gate) return _entries.Select(e => e.Snapshot()).ToList(); }
@@ -439,7 +441,10 @@ public sealed class FileTransferUseCase : IFileTransferService
     private static Error Map(Exception ex, string what) => ex switch
     {
         UnauthorizedAccessException => Error.PermissionDenied(what),
-        DirectoryNotFoundException or FileNotFoundException => Error.NotFound(what),
+        // Keep the thrower's message when it has one — the remote bridge explains *why*
+        // a path is unreachable (admin share, SMB, credentials), which beats "not found".
+        DirectoryNotFoundException or FileNotFoundException => new Error(ErrorKind.NotFound, "not_found",
+            string.IsNullOrWhiteSpace(ex.Message) ? $"{what} was not found." : ex.Message),
         IOException io => Error.Unexpected(io.Message),
         _ => Error.Unexpected(ex.Message),
     };
