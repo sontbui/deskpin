@@ -5,6 +5,11 @@ All notable changes to Deskpin are documented here. The version numbers follow
 
 The CI release workflow reads the section matching the pushed tag and uses it as the GitHub Release body.
 
+## [1.3.2] - 2026-08-12
+
+### Changed
+- **New icon now used in the left nav rail too.** The "Machines & Files" rail item carried the old monitor glyph; it's now the Aperture-Pin mark, matching the title bar and app icon. It follows the nav's selected/rest colors instead of a hard-coded accent. Completes the icon rollout started in 1.3.1.
+
 ## [1.3.1] - 2026-08-12
 
 ### Changed

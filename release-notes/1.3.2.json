@@ -1,0 +1,14 @@
+{
+  "title": "Deskpin 1.3.2 — Icon rollout completed",
+  "description": [
+    {
+      "content": "The new Aperture-Pin mark now shows in the left navigation rail too. The \"Machines & Files\" item still carried the old monitor glyph — it now matches the title bar and the app icon."
+    },
+    {
+      "content": "The rail icon follows the navigation's selected/rest colors instead of a fixed accent, so it looks right whether the item is active or not."
+    },
+    {
+      "content": "No functional changes — this finishes the visual icon refresh started in 1.3.1."
+    }
+  ]
+}

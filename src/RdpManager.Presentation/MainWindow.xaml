@@ -29,7 +29,10 @@
                         IsSettingsVisible="False" SelectionChanged="OnNavSelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Machines &amp; Files" Tag="MachinesFiles" IsSelected="True">
-                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE7F4;" /></NavigationViewItem.Icon>
+                    <!-- Aperture Pin app mark; no Foreground so it follows nav selected/rest states. -->
+                    <NavigationViewItem.Icon>
+                        <PathIcon Data="F0 M8 1 L15 8 L8 15 L1 8 Z M8 4 L12 8 L8 12 L4 8 Z M8 6.4 L9.6 8 L8 9.6 L6.4 8 Z" />
+                    </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem Content="Activity" Tag="Activity">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Clock" /></NavigationViewItem.Icon>
