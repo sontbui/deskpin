@@ -5,7 +5,7 @@ All notable changes to Deskpin are documented here. The version numbers follow
 
 The CI release workflow reads the section matching the pushed tag and uses it as the GitHub Release body.
 
-## [1.2.0] - 2026-08-10
+## [1.2.1] - 2026-08-10
 
 ### Changed
 - **Machines & Files — one merged destination.** The Machines list and the Files console now share a single screen: a 232px machine master (search, status dot, live latency, right-click actions) drives the dual-pane commander and transfer dock on the right. The header toolbar carries Ping / Edit / Display / Drive redirection and the primary Remote action for the selected machine. The separate Machines and Files rail items are gone.
@@ -16,7 +16,6 @@ The CI release workflow reads the section matching the pushed tag and uses it as
 
 ### Added
 - **Per-machine operating system** (Windows / Linux / macOS) on the Add/Edit dialog. Remote is disabled for macOS (no RDP server); Linux still launches RDP (xrdp).
-- **One-click "Enable file access".** After adding a Windows machine (and from the machine's right-click menu), Deskpin can turn on the C$ admin-share access policy (LocalAccountTokenFilterPolicy) on the remote via Remote Registry. When the remote is a workgroup local admin — which Windows filters from remote setup — it copies the exact one-line command to the clipboard and shows it to run once in an elevated prompt on the box.
 - **Automatic SMB sign-in.** Selecting a machine establishes an authenticated SMB session to the host using the machine's DPAPI-stored credential (revealed only transiently for the WNetAddConnection2 call), so the C$ bridge works without a manual `net use`. Unreachable-share errors now show the full explanation in the pane.
 - **Remote pane lands in the user's home**: `C:\Users\{user}` on Windows (via C$), the Samba home-share (`\\host\{user}`) on Linux/macOS.
 - **File logging.** ILogger output now lands on disk at `%LOCALAPPDATA%\RdpManager\logs\deskpin-yyyyMMdd.log` (Info and above, 14-day retention) — previously it only went to the invisible console/debugger. Transfer queue events (queued, completed/failed with reason, skipped, cancel, retry) and app startup are logged. "Open logs folder" button in the Info tab.
