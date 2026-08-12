@@ -103,65 +103,7 @@ public sealed partial class MachinesFilesPage : Page
             await Vm.Master.AddMachineAsync(dialog.Result, dialog.Password, CancellationToken.None);
             _toasts.Show($"Added “{dialog.Result.Name}”.");
             _ = Vm.ProbeAllAsync();
-            await OfferFileAccessAsync(dialog.Result);
         }
-    }
-
-    private async void OnEnableFileAccessItem(object sender, RoutedEventArgs e)
-    {
-        SelectRowUnderMenu(sender);
-        await RunEnableFileAccessAsync();
-    }
-
-    // After adding/editing a Windows machine, offer the one-time admin-share setup.
-    private async System.Threading.Tasks.Task OfferFileAccessAsync(RdpManager.Application.Machines.CreateMachineRequest request)
-    {
-        if (request.Os != RdpManager.Domain.Enums.MachineOs.Windows) return;
-
-        var confirm = new ContentDialog
-        {
-            Title = $"Enable file browsing on {request.Name}?",
-            Content = "Deskpin can turn on the admin-share access policy on this machine so its drives " +
-                      "are browsable here. It needs the saved admin password and Remote Registry reachable; " +
-                      "if the remote is a workgroup local admin you'll get a one-line command to run there instead.",
-            PrimaryButtonText = "Enable now",
-            CloseButtonText = "Later",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = XamlRoot,
-        };
-        if (await confirm.ShowAsync() == ContentDialogResult.Primary)
-            await RunEnableFileAccessAsync();
-    }
-
-    private async System.Threading.Tasks.Task RunEnableFileAccessAsync()
-    {
-        var result = await Vm.EnableFileAccessAsync(CancellationToken.None);
-        if (result is null) return;
-
-        if (result.Success)
-        {
-            _toasts.Show(result.Message);
-            return;
-        }
-
-        // Couldn't do it remotely: copy the fix command and show the manual step.
-        if (!string.IsNullOrEmpty(result.Command))
-        {
-            var data = new DataPackage();
-            data.SetText(result.Command);
-            Clipboard.SetContent(data);
-        }
-        await new ContentDialog
-        {
-            Title = "One manual step needed",
-            Content = new TextBlock
-            {
-                Text = result.Message + "\n\n(The command has been copied to your clipboard.)",
-                TextWrapping = TextWrapping.Wrap,
-            },
-            CloseButtonText = "OK",
-            XamlRoot = XamlRoot,
-        }.ShowAsync();
     }
 
     private async System.Threading.Tasks.Task EditSelectedAsync()
@@ -319,6 +261,11 @@ public sealed partial class MachinesFilesPage : Page
     }
 
     // ── Drive redirection dialog ────────────────────────────────────────────
+
+    private async void OnRetryConnection(object sender, RoutedEventArgs e)
+    {
+        await Vm.Console.RefreshForSelectedAsync();
+    }
 
     private async void OnOpenRedirection(object sender, RoutedEventArgs e)
     {

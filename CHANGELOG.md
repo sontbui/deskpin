@@ -5,6 +5,21 @@ All notable changes to Deskpin are documented here. The version numbers follow
 
 The CI release workflow reads the section matching the pushed tag and uses it as the GitHub Release body.
 
+## [1.3.0] - 2026-08-12
+
+### Changed
+- **File transfers now run over SFTP (SSH), WinSCP-style.** Deskpin connects as the machine's own user and lands in the server-reported home directory — replacing the SMB admin-share bridge. No admin rights, C$, `LocalAccountTokenFilterPolicy`, drive-redirection dependency, or profile-folder guessing. The remote pane uses POSIX paths; per-machine SFTP port (default 22) on Add/Edit. Windows targets need OpenSSH Server enabled once (the right-click "Enable file access" gives the command). Passwords are revealed from DPAPI only to open the SSH session.
+
+## [1.2.3] - 2026-08-12
+
+### Fixed
+- **Remote pane opens the real profile folder.** It no longer assumes C:\Users\{login}; it verifies the folder over SMB, matches renamed profiles (name.DOMAIN), and falls back to C:\Users when the name differs — instead of a not-found error.
+
+## [1.2.2] - 2026-08-12
+
+### Fixed
+- **User-profile folder no longer shows as empty.** Listings filtered out System-flagged entries, which on Windows includes the profile's own special folders (Desktop, Documents, Downloads…). Only Hidden items are skipped now, matching Explorer's default; drive-root junk ($Recycle.Bin, System Volume Information) stays hidden.
+
 ## [1.2.1] - 2026-08-10
 
 ### Changed

@@ -32,8 +32,15 @@ public interface IFileTransferService
     /// <summary>Where the local pane opens by default.</summary>
     string DefaultLocalDirectory { get; }
 
-    /// <summary>Points the remote side of the console at a machine (null = none selected).</summary>
-    void SetRemoteTarget(string? host);
+    /// <summary>Opens the SFTP session to a machine (null = none selected). The secret is used only to connect.</summary>
+    void SetRemoteTarget(RemoteConnection? connection, System.Security.SecureString? secret);
+
+    /// <summary>The user's home directory on the connected remote, or a failure. Used to land the pane in home.</summary>
+    Task<Result<string?>> GetRemoteHomeAsync(CancellationToken ct);
+
+    /// <summary>Path rules for each side, so the UI parses/renders paths correctly (Windows local, POSIX remote).</summary>
+    IPathModel LocalPathModel { get; }
+    IPathModel RemotePathModel { get; }
 
     // ── Transfers ───────────────────────────────────────────────────────────
     /// <summary>Stats every source and destination; splits requests into ready-to-queue and name conflicts.</summary>

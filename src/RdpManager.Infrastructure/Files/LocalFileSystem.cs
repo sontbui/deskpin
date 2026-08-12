@@ -3,10 +3,9 @@ using RdpManager.Application.Files;
 namespace RdpManager.Infrastructure.Files;
 
 /// <summary>
-/// <see cref="ILocalFileSystem"/> over System.IO. All streams are opened asynchronous and
-/// unbuffered enough that the copy loop in <see cref="RemoteFileSystem"/> sees live bytes.
-/// Exceptions (UnauthorizedAccessException and friends) bubble up untouched — the Application
-/// layer maps them to friendly errors.
+/// <see cref="ILocalFileSystem"/> over System.IO. All streams are opened asynchronous so the
+/// copy loop sees live bytes. Exceptions (UnauthorizedAccessException &amp; friends) bubble up
+/// untouched — the Application layer maps them to friendly errors.
 /// </summary>
 public sealed class LocalFileSystem : ILocalFileSystem
 {
@@ -21,9 +20,16 @@ public sealed class LocalFileSystem : ILocalFileSystem
     internal static readonly EnumerationOptions ListingOptions = new()
     {
         IgnoreInaccessible = true,
-        AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,
+        // Skip only Hidden — matching Explorer's default. NOT System: user-profile special
+        // folders (Desktop, Documents, Downloads, …) are marked System (for their custom icons)
+        // but not Hidden, so filtering System would wrongly show a full profile as empty. The
+        // drive-root junk ($Recycle.Bin, "Documents and Settings", System Volume Information) is
+        // Hidden+System, so the Hidden skip still hides all of it.
+        AttributesToSkip = FileAttributes.Hidden,
         RecurseSubdirectories = false,
     };
+
+    public IPathModel PathModel => WindowsPathModel.Instance;
 
     public string DefaultDirectory =>
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify);

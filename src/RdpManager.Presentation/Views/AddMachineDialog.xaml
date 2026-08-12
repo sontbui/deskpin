@@ -18,11 +18,18 @@
                 <TextBox x:Name="HostBox" Header="Host / IP" PlaceholderText="10.0.4.22" />
                 <TextBox x:Name="PortBox" Grid.Column="1" Header="Port" Text="3389" />
             </Grid>
-            <ComboBox x:Name="OsBox" Header="Operating system" SelectedIndex="0" HorizontalAlignment="Stretch">
-                <ComboBoxItem Content="Windows" />
-                <ComboBoxItem Content="Linux (xrdp)" />
-                <ComboBoxItem Content="macOS (no RDP — files only)" />
-            </ComboBox>
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="110" />
+                </Grid.ColumnDefinitions>
+                <ComboBox x:Name="OsBox" Header="Operating system" SelectedIndex="0" HorizontalAlignment="Stretch">
+                    <ComboBoxItem Content="Windows" />
+                    <ComboBoxItem Content="Linux (xrdp)" />
+                    <ComboBoxItem Content="macOS (no RDP — files only)" />
+                </ComboBox>
+                <TextBox x:Name="SshPortBox" Grid.Column="1" Header="SFTP port" Text="22" />
+            </Grid>
             <TextBox x:Name="UserBox" Header="Username" PlaceholderText="svc_build" />
             <PasswordBox x:Name="PasswordBox" Header="Password"
                          PlaceholderText="leave blank to keep / prompt at connect" />

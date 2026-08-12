@@ -29,10 +29,8 @@ public sealed record TransferRequest(
     string SourcePath,
     string DestinationDirectory)
 {
+    /// <summary>Overrides the name at the destination (Keep-both). Null = keep the source's name.</summary>
     public string? DestinationFileName { get; init; }
-
-    public string FileName => DestinationFileName ?? TransferPath.GetFileName(SourcePath);
-    public string DestinationPath => TransferPath.Join(DestinationDirectory, FileName);
 }
 
 /// <summary>A request whose destination already has a file with the same name.</summary>

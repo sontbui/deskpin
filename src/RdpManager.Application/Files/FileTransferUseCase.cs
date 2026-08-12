@@ -38,7 +38,17 @@ public sealed class FileTransferUseCase : IFileTransferService
 
     public string DefaultLocalDirectory => _local.DefaultDirectory;
 
-    public void SetRemoteTarget(string? host) => _remote.SetTarget(host);
+    public void SetRemoteTarget(RemoteConnection? connection, System.Security.SecureString? secret) =>
+        _remote.SetTarget(connection, secret);
+
+    public async Task<Result<string?>> GetRemoteHomeAsync(CancellationToken ct)
+    {
+        try { return await _remote.GetHomeDirectoryAsync(ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { return Map(ex, "the remote home directory"); }
+    }
+
+    public IPathModel RemotePathModel => _remote.PathModel;
+    public IPathModel LocalPathModel => _local.PathModel;
 
     public IReadOnlyList<TransferItem> Queue
     {
@@ -55,12 +65,13 @@ public sealed class FileTransferUseCase : IFileTransferService
     public async Task<Result<IReadOnlyList<FileSystemEntry>>> ListDirectoryAsync(
         TransferEndpoint endpoint, string path, CancellationToken ct)
     {
-        var parsed = TransferPath.Normalize(path);
+        var browser = Browser(endpoint);
+        var parsed = browser.PathModel.Normalize(path);
         if (!parsed.IsSuccess) return parsed.Error!;
         try
         {
             return Result<IReadOnlyList<FileSystemEntry>>.Success(
-                await Browser(endpoint).ListDirectoryAsync(parsed.Value, ct));
+                await browser.ListDirectoryAsync(parsed.Value, ct));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -83,11 +94,12 @@ public sealed class FileTransferUseCase : IFileTransferService
     public async Task<Result<bool>> CreateDirectoryAsync(TransferEndpoint endpoint, string parentPath, string name, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(name)) return Error.Validation("Folder name must not be empty.");
-        var parsed = TransferPath.Normalize(TransferPath.Join(parentPath, name.Trim()));
+        var browser = Browser(endpoint);
+        var parsed = browser.PathModel.Normalize(browser.PathModel.Join(parentPath, name.Trim()));
         if (!parsed.IsSuccess) return parsed.Error!;
         try
         {
-            await Browser(endpoint).CreateDirectoryAsync(parsed.Value, ct);
+            await browser.CreateDirectoryAsync(parsed.Value, ct);
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -154,7 +166,7 @@ public sealed class FileTransferUseCase : IFileTransferService
                 if (source.IsDirectory)
                     return Error.Validation($"'{source.Name}' is a folder — open it and select the files to transfer.");
 
-                existing = await DestinationBrowser(request).StatAsync(request.DestinationPath, ct);
+                existing = await DestinationBrowser(request).StatAsync(DestinationPathOf(request), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -184,8 +196,8 @@ public sealed class FileTransferUseCase : IFileTransferService
         if (source.IsDirectory)
             return Error.Validation($"'{source.Name}' is a folder — open it and select the files to transfer.");
 
-        var job = TransferJob.Create(request.FileName, source.SizeBytes, request.Direction);
-        var entry = new QueueEntry(job, request.SourcePath, request.DestinationPath, _clock.UtcNow);
+        var job = TransferJob.Create(FileNameOf(request), source.SizeBytes, request.Direction);
+        var entry = new QueueEntry(job, request.SourcePath, DestinationPathOf(request), _clock.UtcNow);
         lock (_gate) _entries.Insert(0, entry);
         _logger.LogInformation("Queued {Direction} of {File} ({Bytes} bytes) → {Destination}",
             job.Direction, job.FileName, job.TotalBytes, entry.DestinationPath);
@@ -213,8 +225,8 @@ public sealed class FileTransferUseCase : IFileTransferService
             default:
             {
                 // Record the skip so the dock and history are honest about what didn't move.
-                var job = TransferJob.Create(conflict.Request.FileName, conflict.Source.SizeBytes, conflict.Request.Direction).Skip();
-                var entry = new QueueEntry(job, conflict.Request.SourcePath, conflict.Request.DestinationPath, _clock.UtcNow);
+                var job = TransferJob.Create(FileNameOf(conflict.Request), conflict.Source.SizeBytes, conflict.Request.Direction).Skip();
+                var entry = new QueueEntry(job, conflict.Request.SourcePath, DestinationPathOf(conflict.Request), _clock.UtcNow);
                 lock (_gate)
                 {
                     _entries.Insert(0, entry);
@@ -229,15 +241,16 @@ public sealed class FileTransferUseCase : IFileTransferService
 
     private async Task<Result<string>> FindFreeNameAsync(TransferRequest request, CancellationToken ct)
     {
-        var original = TransferPath.GetFileName(request.SourcePath);
+        var destModel = DestinationBrowser(request).PathModel;
+        var original = SourceBrowser(request).PathModel.GetFileName(request.SourcePath);
         for (var i = 1; i <= MaxKeepBothProbes; i++)
         {
-            var candidate = TransferPath.CopyVariant(original, i);
+            var candidate = destModel.CopyVariant(original, i);
             FileSystemEntry? taken;
             try
             {
                 taken = await DestinationBrowser(request).StatAsync(
-                    TransferPath.Join(request.DestinationDirectory, candidate), ct);
+                    destModel.Join(request.DestinationDirectory, candidate), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -437,6 +450,14 @@ public sealed class FileTransferUseCase : IFileTransferService
 
     private IFileSystemBrowser DestinationBrowser(TransferRequest request) =>
         request.Direction == TransferDirection.Upload ? _remote : _local;
+
+    /// <summary>The destination file name — the override (Keep-both) or the source's own name, in the SOURCE's path style.</summary>
+    private string FileNameOf(TransferRequest request) =>
+        request.DestinationFileName ?? SourceBrowser(request).PathModel.GetFileName(request.SourcePath);
+
+    /// <summary>The full destination path, joined with the DESTINATION endpoint's path style.</summary>
+    private string DestinationPathOf(TransferRequest request) =>
+        DestinationBrowser(request).PathModel.Join(request.DestinationDirectory, FileNameOf(request));
 
     private static Error Map(Exception ex, string what) => ex switch
     {

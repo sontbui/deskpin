@@ -24,6 +24,8 @@ internal sealed class MutableClock : IClock
 /// <summary>Shared in-memory "disk" behavior for both fake endpoints. Paths are opaque strings.</summary>
 internal abstract class FakeFileSystemBase : IFileSystemBrowser
 {
+    public IPathModel PathModel { get; set; } = WindowsPathModel.Instance;
+
     public readonly Dictionary<string, byte[]> Files = new(StringComparer.OrdinalIgnoreCase);
     public readonly HashSet<string> Directories = new(StringComparer.OrdinalIgnoreCase);
     public readonly HashSet<string> DeniedPaths = new(StringComparer.OrdinalIgnoreCase);
@@ -137,8 +139,10 @@ internal sealed class FakeLocalFileSystem : FakeFileSystemBase, ILocalFileSystem
 
 internal sealed class FakeRemoteFileSystem : FakeFileSystemBase, IRemoteFileSystem
 {
-    public string? Target;
-    public void SetTarget(string? host) => Target = host;
+    public RemoteConnection? Target;
+    public string Home = @"C:\Users\me";
+    public void SetTarget(RemoteConnection? connection, System.Security.SecureString? secret) => Target = connection;
+    public Task<string?> GetHomeDirectoryAsync(CancellationToken ct) => Task.FromResult<string?>(Home);
 
     public int ChunkSize = 4;
     /// <summary>Copies that should fail with "Connection reset" before one succeeds (retry tests).</summary>

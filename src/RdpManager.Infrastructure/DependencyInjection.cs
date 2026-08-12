@@ -64,12 +64,13 @@ public static class DependencyInjection
         services.AddSingleton<IRemoteLauncher, MstscRemoteLauncher>();
         services.AddSingleton<IUninstallCleanup, Cleanup.UninstallCleanup>();
 
-        // Files console: both sides of the commander plus the redirection setting.
+        // Files console (SFTP / WinSCP-style): local over System.IO, remote over SFTP.
         services.AddSingleton<ILocalFileSystem, LocalFileSystem>();
-        services.AddSingleton<IRemoteFileSystem, RemoteFileSystem>();
-        services.AddSingleton<IDriveRedirectionSettings, DriveRedirectionSettingsStore>();
-        services.AddSingleton<IRemoteShareAuthenticator, SmbShareAuthenticator>();
+        services.AddSingleton<IRemoteFileSystem, SftpRemoteFileSystem>();
+        services.AddSingleton<IRemoteConnectionFactory, RemoteConnectionFactory>();
         services.AddSingleton<IRemoteAdminSetup, RemoteAdminSetup>();
+        // Drive redirection stays a real RDP setting (the Remote button), just not tied to Files.
+        services.AddSingleton<IDriveRedirectionSettings, DriveRedirectionSettingsStore>();
         return services;
     }
 
@@ -100,5 +101,18 @@ public static class DependencyInjection
         if (!hasOs)
             await db.Database.ExecuteSqlRawAsync(
                 "ALTER TABLE Machines ADD COLUMN \"Os\" INTEGER NOT NULL DEFAULT 0;", ct);
+
+        var hasSshPort = false;
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = "PRAGMA table_info('Machines');";
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+                if (string.Equals(reader.GetString(1), "SshPort", StringComparison.OrdinalIgnoreCase))
+                    hasSshPort = true;
+        }
+        if (!hasSshPort)
+            await db.Database.ExecuteSqlRawAsync(
+                "ALTER TABLE Machines ADD COLUMN \"SshPort\" INTEGER NOT NULL DEFAULT 22;", ct);
     }
 }

@@ -32,6 +32,7 @@ public sealed partial class AddMachineDialog : ContentDialog
         UserBox.Text = machine.Username ?? string.Empty;
         TagsBox.Text = string.Join(", ", machine.Tags.Select(t => t.Name));
         OsBox.SelectedIndex = (int)machine.Os;
+        SshPortBox.Text = machine.SshPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
         ApplyRedirection(machine.Redirection);
     }
 
@@ -78,6 +79,7 @@ public sealed partial class AddMachineDialog : ContentDialog
 
         var username = string.IsNullOrWhiteSpace(UserBox.Text) ? null : UserBox.Text.Trim();
         var os = OsBox.SelectedIndex is >= 0 and <= 2 ? (MachineOs)OsBox.SelectedIndex : MachineOs.Windows;
-        Result = new CreateMachineRequest(name, host, port, username, tags, null, null, ReadRedirection(), os);
+        var sshPort = int.TryParse(SshPortBox.Text, out var sp) && sp is >= 1 and <= 65535 ? sp : 22;
+        Result = new CreateMachineRequest(name, host, port, username, tags, null, null, ReadRedirection(), os, sshPort);
     }
 }

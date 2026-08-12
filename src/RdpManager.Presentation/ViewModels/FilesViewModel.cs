@@ -24,7 +24,7 @@ public sealed partial class FilesViewModel : ObservableObject
     private string _defaultRemotePath = @"C:\";
 
     private readonly IFileTransferService _transfers;
-    private readonly IRemoteShareAuthenticator _shareAuth;
+    private readonly IRemoteConnectionFactory _connections;
     private readonly IDriveRedirectionSettings _driveRedirection;
     private readonly IDialogService _dialogs;
     private readonly IToastService _toasts;
@@ -35,12 +35,12 @@ public sealed partial class FilesViewModel : ObservableObject
     private TransferEndpoint? _dragSource;
 
     public FilesViewModel(
-        IFileTransferService transfers, IRemoteShareAuthenticator shareAuth,
+        IFileTransferService transfers, IRemoteConnectionFactory connections,
         IDriveRedirectionSettings driveRedirection,
         IDialogService dialogs, IToastService toasts, IDispatcherService dispatcher)
     {
         _transfers = transfers;
-        _shareAuth = shareAuth;
+        _connections = connections;
         _driveRedirection = driveRedirection;
         _dialogs = dialogs;
         _toasts = toasts;
@@ -50,6 +50,7 @@ public sealed partial class FilesViewModel : ObservableObject
             "Nothing here. Navigate to a folder that has the files you want to send.");
         RemotePane = new PaneViewModel(TransferEndpoint.Remote, transfers, "Remote",
             "This folder is empty. Drag files here from the left, or select on This PC and press →.");
+        RemotePane.PathModel = transfers.RemotePathModel; // remote is always SFTP → POSIX
 
         Dock = new TransferDockViewModel(transfers, dispatcher);
         Dock.JobCompleted += OnJobCompleted;
@@ -63,15 +64,17 @@ public sealed partial class FilesViewModel : ObservableObject
     public TransferDockViewModel Dock { get; }
 
     [ObservableProperty] private MachineItemViewModel? _selectedMachine;
-    [ObservableProperty] private bool _isRedirectionOn;
-    [ObservableProperty] private string _redirectionStatusText = "Redirection off";
+    [ObservableProperty] private bool _isConnected;
+    [ObservableProperty] private string _connectionStatusText = "Not connected";
     [ObservableProperty] private string _connectionText = "Select a machine on the left.";
+    [ObservableProperty] private string _blockedText = string.Empty;
     [ObservableProperty] private bool _hasLocalSelection;
     [ObservableProperty] private bool _hasRemoteSelection;
 
-    /// <summary>Console = panes + arrows. Off when no machine is selected or redirection is disabled.</summary>
-    public bool IsConsoleEnabled => SelectedMachine is not null && IsRedirectionOn;
-    public bool IsRedirectionOffForSelected => SelectedMachine is not null && !IsRedirectionOn;
+    /// <summary>Console = panes + arrows. Enabled once the SFTP session to the selected machine is up.</summary>
+    public bool IsConsoleEnabled => SelectedMachine is not null && IsConnected;
+    /// <summary>A machine is selected but not connected — show the reason overlay.</summary>
+    public bool IsConsoleBlocked => SelectedMachine is not null && !IsConnected;
 
     [RelayCommand]
     public async Task LoadAsync(CancellationToken ct)
@@ -83,7 +86,7 @@ public sealed partial class FilesViewModel : ObservableObject
     partial void OnSelectedMachineChanged(MachineItemViewModel? value) =>
         _ = GuardedMachineChangeAsync(value);
 
-    /// <summary>Re-runs the machine-change flow (re-auth SMB + reload remote pane) for the current selection.</summary>
+    /// <summary>Re-runs the machine-change flow (reconnect SFTP + reload remote pane) for the current selection.</summary>
     public Task RefreshForSelectedAsync() => GuardedMachineChangeAsync(SelectedMachine);
 
     private async Task GuardedMachineChangeAsync(MachineItemViewModel? value)
@@ -94,10 +97,11 @@ public sealed partial class FilesViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            // Settings/DB hiccups must degrade to a message, never an unhandled crash loop.
-            IsRedirectionOn = false;
+            // Any hiccup degrades to a message, never an unhandled crash loop.
+            IsConnected = false;
+            ConnectionStatusText = "Not connected";
+            BlockedText = $"Couldn't connect: {ex.Message}";
             NotifyConsoleState();
-            _toasts.Show($"Couldn't read this machine's redirection settings: {ex.Message}");
         }
     }
 
@@ -105,43 +109,57 @@ public sealed partial class FilesViewModel : ObservableObject
     {
         if (machine is null)
         {
-            _transfers.SetRemoteTarget(null);
-            IsRedirectionOn = false;
-            ConnectionText = "Select a machine on the left — transfers ride its RDP session.";
+            _transfers.SetRemoteTarget(null, null);
+            IsConnected = false;
+            ConnectionStatusText = "Not connected";
+            ConnectionText = "Select a machine on the left — files are browsed over SFTP.";
             NotifyConsoleState();
             return;
         }
 
         var model = machine.Model;
-        ConnectionText = $"Files on {model.Name} · {machine.HostLine}";
+        ConnectionText = $"Files on {model.Name} \u00b7 {machine.HostLine} (SFTP :{model.SshPort})";
         RemotePane.Title = model.Name;
+        RemotePane.PathModel = _transfers.RemotePathModel; // POSIX for SFTP
 
-        // Point the SMB bridge at this host, sign in to its shares with the stored credential
-        // (best-effort), and land straight in the user's home per OS.
-        _transfers.SetRemoteTarget(model.Host.Host);
-        var signInProblem = await _shareAuth.EnsureAsync(machine.Id, model.Host.Host, CancellationToken.None);
-        if (signInProblem is not null) _toasts.Show(signInProblem);
-        _defaultRemotePath = RemoteHome.PathFor(model.Os, model.Username, model.Host.Host);
-
-        var redirection = await _driveRedirection.GetAsync(machine.Id, CancellationToken.None);
-        ApplyRedirectionState(redirection);
-
-        if (IsRedirectionOn)
-            await RemotePane.NavigateAsync(_defaultRemotePath);
+        IsConnected = false;
         NotifyConsoleState();
-    }
 
-    private void ApplyRedirectionState(DriveRedirection redirection)
-    {
-        IsRedirectionOn = redirection.IsEnabled;
-        RedirectionStatusText = redirection.IsEnabled ? "Redirection live" : "Redirection off";
+        // Build the SFTP connection (reveals the DPAPI secret only transiently).
+        var info = await _connections.CreateAsync(machine.Id, CancellationToken.None);
+        if (!ReferenceEquals(SelectedMachine, machine)) return; // user switched away \u2014 drop stale result
+        if (info is null || info.Secret is null)
+        {
+            ConnectionStatusText = "Not connected";
+            BlockedText = $"Add {model.Name}\u2019s username and password in Edit so Deskpin can sign in over SFTP.";
+            NotifyConsoleState();
+            return;
+        }
+
+        _transfers.SetRemoteTarget(info.Connection, info.Secret);
+        var home = await _transfers.GetRemoteHomeAsync(CancellationToken.None);
+        info.Secret.Dispose();
+
+        if (!ReferenceEquals(SelectedMachine, machine)) return; // switched away during connect \u2014 ignore
+        if (!home.IsSuccess)
+        {
+            ConnectionStatusText = "Not connected";
+            BlockedText = home.Error!.Message;
+            NotifyConsoleState();
+            return;
+        }
+
+        IsConnected = true;
+        ConnectionStatusText = "SFTP connected";
+        _defaultRemotePath = string.IsNullOrWhiteSpace(home.Value) ? "/" : home.Value!;
+        await RemotePane.NavigateAsync(_defaultRemotePath); // lands in the user's home, WinSCP-style
         NotifyConsoleState();
     }
 
     private void NotifyConsoleState()
     {
         OnPropertyChanged(nameof(IsConsoleEnabled));
-        OnPropertyChanged(nameof(IsRedirectionOffForSelected));
+        OnPropertyChanged(nameof(IsConsoleBlocked));
     }
 
     // ── Drive redirection dialog plumbing ───────────────────────────────────
@@ -157,18 +175,12 @@ public sealed partial class FilesViewModel : ObservableObject
         return roots.IsSuccess ? roots.Value : Array.Empty<FileSystemEntry>();
     }
 
-    /// <summary>Persists the dialog's outcome. Turning redirection off honestly closes the console.</summary>
+    /// <summary>Persists the drive-redirection choice for the RDP session (independent of SFTP file browsing).</summary>
     public async Task ApplyRedirectionAsync(DriveRedirection value)
     {
         if (SelectedMachine is null) return;
         await _driveRedirection.SetAsync(SelectedMachine.Id, value, CancellationToken.None);
-        ApplyRedirectionState(value);
-
-        if (IsRedirectionOn && string.IsNullOrEmpty(RemotePane.CurrentPath))
-            await RemotePane.NavigateAsync(_defaultRemotePath);
-        _toasts.Show(IsRedirectionOn
-            ? "Drive redirection updated. It applies to the next session you launch."
-            : "Drive redirection is off — the Files console is disabled for this machine.");
+        _toasts.Show("Drive redirection updated. It applies to the next RDP session you launch.");
     }
 
     // ── Transfers ───────────────────────────────────────────────────────────
@@ -258,7 +270,7 @@ public sealed partial class FilesViewModel : ObservableObject
             else
             {
                 var choice = await _dialogs.OverwriteAsync(
-                    conflict.Request.FileName,
+                    conflict.Source.Name,
                     TransferFormat.Bytes(conflict.Existing.SizeBytes),
                     TransferFormat.Bytes(conflict.Source.SizeBytes));
                 decision = choice?.Decision ?? OverwriteDecision.Skip;
@@ -287,7 +299,7 @@ public sealed partial class FilesViewModel : ObservableObject
     {
         // A finished upload changes the remote listing; a finished download changes the local one.
         var pane = item.Job.Direction == TransferDirection.Upload ? RemotePane : LocalPane;
-        var destinationDir = TransferPath.GetParent(item.DestinationPath);
+        var destinationDir = pane.PathModel.GetParent(item.DestinationPath);
         if (destinationDir is not null &&
             string.Equals(pane.CurrentPath, destinationDir, StringComparison.OrdinalIgnoreCase))
         {

@@ -1,0 +1,26 @@
+{
+  "title": "Deskpin 1.3.0 — Files over SFTP",
+  "description": [
+    {
+      "content": "File transfers now use SFTP (SSH), the WinSCP way: Deskpin connects as the machine's own user and lands straight in their home folder — no admin shares, no C$, no LocalAccountTokenFilterPolicy, no drive-redirection dependency, no profile-folder guessing."
+    },
+    {
+      "content": "The remote pane shows the real remote filesystem with POSIX paths (/), breadcrumbs and a go-to-path bar; browse, drag across the divider or use Send/Get, with live progress, throughput and ETA in the transfer dock (Queue + History), cancel/retry/skip and overwrite Replace/Keep both/Skip."
+    },
+    {
+      "content": "Works uniformly across Windows, Linux and macOS: Linux/macOS already run SSH; Windows needs the built-in OpenSSH Server enabled once — the machine's right-click \"Enable file access\" hands you the exact command."
+    },
+    {
+      "content": "Per-machine SFTP port (default 22) on the Add/Edit dialog. Machines still carry their OS: Remote (RDP) stays disabled for macOS, but file browsing works on all three over SFTP."
+    },
+    {
+      "content": "Connection state is explicit: a green \"SFTP connected\" pill when the session is up, a clear \"Not connected\" overlay with the reason and a Retry button when it isn't."
+    },
+    {
+      "content": "Security unchanged: the password is revealed from DPAPI only to open the SSH session and is never persisted in plaintext; the generated .rdp still contains no secret."
+    },
+    {
+      "content": "Also in this line: merged Machines & Files console, Nocturne dark theme, report-a-bug from the Info tab, and real file logging with a 3-second auto-hiding toast."
+    }
+  ]
+}

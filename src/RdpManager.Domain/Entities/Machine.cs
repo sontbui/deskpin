@@ -21,6 +21,8 @@ public sealed class Machine
     public string? Gateway { get; private set; }
     public RedirectionFlags Redirection { get; private set; } = RedirectionFlags.Clipboard;
     public MachineOs Os { get; private set; } = MachineOs.Windows;
+    /// <summary>TCP port of the host's SSH/SFTP server (file transfers). Default 22.</summary>
+    public int SshPort { get; private set; } = 22;
     public string? Notes { get; private set; }
     public bool IsFavorite { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
@@ -53,6 +55,7 @@ public sealed class Machine
     public void SetNotes(string? notes) => Notes = notes;
     public void SetRedirection(RedirectionFlags flags) => Redirection = flags;
     public void SetOs(MachineOs os) => Os = os;
+    public void SetSshPort(int port) => SshPort = port is >= 1 and <= 65535 ? port : 22;
     public void ToggleFavorite(bool value) => IsFavorite = value;
     public void MarkConnected(DateTimeOffset when) => LastConnectedAt = when;
 

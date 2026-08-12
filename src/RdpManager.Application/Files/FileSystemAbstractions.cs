@@ -18,6 +18,9 @@ public sealed record FileSystemEntry(
 /// </summary>
 public interface IFileSystemBrowser
 {
+    /// <summary>Path rules for this endpoint (Windows for local, POSIX for an SFTP host).</summary>
+    IPathModel PathModel { get; }
+
     Task<IReadOnlyList<FileSystemEntry>> ListDirectoryAsync(string path, CancellationToken ct);
 
     /// <summary>Returns the entry at <paramref name="path"/>, or null when nothing exists there.</summary>
@@ -46,33 +49,28 @@ public interface ILocalFileSystem : IFileSystemBrowser
     Task<Stream> OpenWriteAsync(string path, CancellationToken ct);
 }
 
+/// <summary>Where to reach a remote host for file transfer (SFTP: host + SSH port + username).</summary>
+public sealed record RemoteConnection(string Host, int Port, string Username);
+
 /// <summary>
-/// The remote host's filesystem, reached over the RDP drive-redirection bridge
-/// (the <c>\\tsclient</c> share as seen from the remote side, i.e. the redirected-drive UNC path).
-/// Copy-in/copy-out stream in chunks and report cumulative bytes so the UI shows live progress.
+/// The remote host's filesystem over SFTP (WinSCP-style): connect as the machine's own user and
+/// land in their home — no admin shares, no drive redirection. Copy-in/copy-out stream in chunks
+/// and report cumulative bytes so the UI shows live progress.
 /// </summary>
 public interface IRemoteFileSystem : IFileSystemBrowser
 {
     /// <summary>
-    /// Points the bridge at a machine. Drive-letter paths map to that host's SMB admin shares
-    /// (<c>C:\Users</c> → <c>\\host\C$\Users</c>); UNC paths pass through untouched.
+    /// Opens (or replaces) the SFTP session to a host using the supplied secret. Null clears it.
+    /// The secret is used only to authenticate and is not retained in plaintext.
     /// </summary>
-    void SetTarget(string? host);
+    void SetTarget(RemoteConnection? connection, System.Security.SecureString? secret);
+
+    /// <summary>The user's home directory as reported by the server after connecting (null if not connected).</summary>
+    Task<string?> GetHomeDirectoryAsync(CancellationToken ct);
 
     /// <summary>Upload: writes <paramref name="source"/> to <paramref name="remotePath"/>, replacing any existing file.</summary>
     Task CopyInAsync(Stream source, string remotePath, IProgress<long>? progress, CancellationToken ct);
 
     /// <summary>Download: reads <paramref name="remotePath"/> into <paramref name="destination"/>.</summary>
     Task CopyOutAsync(string remotePath, Stream destination, IProgress<long>? progress, CancellationToken ct);
-}
-
-/// <summary>
-/// Establishes an authenticated SMB session to a host using the machine's stored credential
-/// (DPAPI-protected; revealed only transiently for the connection call — never persisted as
-/// plaintext). Best-effort: failures are logged, and browsing surfaces its own errors.
-/// </summary>
-public interface IRemoteShareAuthenticator
-{
-    /// <summary>Returns null when signed in (or nothing to do); otherwise a user-facing failure message.</summary>
-    Task<string?> EnsureAsync(Guid machineId, string host, CancellationToken ct);
 }

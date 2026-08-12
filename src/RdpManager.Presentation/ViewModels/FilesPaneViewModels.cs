@@ -57,6 +57,9 @@ public sealed partial class PaneViewModel : ObservableObject
     private readonly IFileTransferService _service;
     private string? _lastGoodPath;
 
+    /// <summary>Path rules for this pane — Windows for local, POSIX for a remote SFTP host.</summary>
+    public RdpManager.Application.Files.IPathModel PathModel { get; set; } = RdpManager.Application.Files.WindowsPathModel.Instance;
+
     public PaneViewModel(TransferEndpoint endpoint, IFileTransferService service, string title, string emptyText)
     {
         Endpoint = endpoint;
@@ -97,7 +100,7 @@ public sealed partial class PaneViewModel : ObservableObject
     [RelayCommand]
     public async Task NavigateAsync(string path)
     {
-        var normalized = TransferPath.Normalize(path);
+        var normalized = PathModel.Normalize(path);
         if (!normalized.IsSuccess)
         {
             HasError = true;
@@ -120,7 +123,7 @@ public sealed partial class PaneViewModel : ObservableObject
                     Items.Clear();
                     SetSelection(Array.Empty<FileEntryViewModel>());
                     IsAccessDenied = true;
-                    AccessDeniedText = $"You don't have permission to read {TransferPath.GetFileName(normalized.Value)}. " +
+                    AccessDeniedText = $"You don't have permission to read {PathModel.GetFileName(normalized.Value)}. " +
                                        "Connect with an account that can, or ask an admin.";
                     IsEmpty = false;
                     return;
@@ -156,7 +159,7 @@ public sealed partial class PaneViewModel : ObservableObject
     [RelayCommand]
     public async Task GoToPathAsync()
     {
-        var normalized = TransferPath.Normalize(PathDraft, string.IsNullOrEmpty(CurrentPath) ? null : CurrentPath);
+        var normalized = PathModel.Normalize(PathDraft, string.IsNullOrEmpty(CurrentPath) ? null : CurrentPath);
         if (!normalized.IsSuccess)
         {
             HasError = true;
@@ -179,7 +182,7 @@ public sealed partial class PaneViewModel : ObservableObject
     [RelayCommand]
     public async Task UpAsync()
     {
-        var parent = string.IsNullOrEmpty(CurrentPath) ? null : TransferPath.GetParent(CurrentPath);
+        var parent = string.IsNullOrEmpty(CurrentPath) ? null : PathModel.GetParent(CurrentPath);
         if (parent is not null) await NavigateAsync(parent);
     }
 
@@ -187,7 +190,7 @@ public sealed partial class PaneViewModel : ObservableObject
     [RelayCommand]
     public async Task BackAsync()
     {
-        var target = TransferPath.GetParent(CurrentPath) ?? _lastGoodPath;
+        var target = PathModel.GetParent(CurrentPath) ?? _lastGoodPath;
         if (target is not null) await NavigateAsync(target);
     }
 
@@ -224,7 +227,7 @@ public sealed partial class PaneViewModel : ObservableObject
     private void UpdateCrumbs(string path)
     {
         Crumbs.Clear();
-        var segments = TransferPath.Breadcrumbs(path);
+        var segments = PathModel.Breadcrumbs(path);
         for (var i = 0; i < segments.Count; i++)
             Crumbs.Add(new BreadcrumbItemViewModel(segments[i], i == segments.Count - 1));
     }
