@@ -47,6 +47,14 @@ public sealed class FileTransferUseCase : IFileTransferService
         catch (Exception ex) when (ex is not OperationCanceledException) { return Map(ex, "the remote home directory"); }
     }
 
+    public async Task<Result<string?>> ConnectRemoteAsync(CancellationToken ct)
+    {
+        // TryConnectAsync already classifies the expected failures, so there is nothing to map.
+        // The catch is only for a fault it could not foresee.
+        try { return await _remote.TryConnectAsync(ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { return Map(ex, "the remote host"); }
+    }
+
     public IPathModel RemotePathModel => _remote.PathModel;
     public IPathModel LocalPathModel => _local.PathModel;
 
@@ -461,11 +469,21 @@ public sealed class FileTransferUseCase : IFileTransferService
 
     private static Error Map(Exception ex, string what) => ex switch
     {
+        // Nothing was ever rejected here - the machine simply has no sign-in details saved,
+        // so the fix is "add them", not "your password is wrong".
+        RemoteCredentialsMissingException => new Error(ErrorKind.NeedsReconfiguration, "credentials_missing", ex.Message),
+        // Same reasoning as NotFound below: the thrower names which credential was refused
+        // and where to fix it, which beats a generic "Access to <what> was denied."
+        UnauthorizedAccessException when !string.IsNullOrWhiteSpace(ex.Message) =>
+            new Error(ErrorKind.PermissionDenied, "permission_denied", ex.Message),
         UnauthorizedAccessException => Error.PermissionDenied(what),
         // Keep the thrower's message when it has one — the remote bridge explains *why*
         // a path is unreachable (admin share, SMB, credentials), which beats "not found".
         DirectoryNotFoundException or FileNotFoundException => new Error(ErrorKind.NotFound, "not_found",
             string.IsNullOrWhiteSpace(ex.Message) ? $"{what} was not found." : ex.Message),
+        // A network/service problem is an expected outcome, not a defect - keeping it under
+        // Unexpected is what made "the machine is off" look the same as "the app is broken".
+        RemoteUnreachableException => new Error(ErrorKind.Unreachable, "unreachable", ex.Message),
         IOException io => Error.Unexpected(io.Message),
         _ => Error.Unexpected(ex.Message),
     };

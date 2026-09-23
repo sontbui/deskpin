@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using RdpManager.Application.Common;
 using RdpManager.Application.Files;
 using RdpManager.Application.Rdp;
 using RdpManager.Domain.Enums;
@@ -89,6 +90,53 @@ public sealed partial class FilesViewModel : ObservableObject
     /// <summary>Re-runs the machine-change flow (reconnect SFTP + reload remote pane) for the current selection.</summary>
     public Task RefreshForSelectedAsync() => GuardedMachineChangeAsync(SelectedMachine);
 
+    /// <summary>
+    /// Raised when the user picks "Edit machine" on a failed-connection dialog. The page owns
+    /// AddMachineDialog, so the VM asks rather than reaches for UI.
+    /// </summary>
+    public event Action? EditMachineRequested;
+
+    /// <summary>
+    /// One place that turns a failed connection into a dialog the user can act on. The pane
+    /// keeps its own "Not connected" reason too, so dismissing this loses nothing.
+    /// </summary>
+    private async Task ReportConnectionFailureAsync(Error error)
+    {
+        var (title, primary) = error.Kind switch
+        {
+            ErrorKind.NeedsReconfiguration => ("Sign-in details needed", "Edit machine"),
+            ErrorKind.PermissionDenied => ("Sign-in rejected", "Edit machine"),
+            ErrorKind.Unreachable => ("Can't reach this machine", "Try again"),
+            _ => ("Couldn't open files", "Try again"),
+        };
+
+        bool actOnIt;
+        try
+        {
+            actOnIt = await _dialogs.ConfirmAsync(title, error.Message, primary, "Close");
+        }
+        catch (Exception)
+        {
+            // A ContentDialog can refuse to open (no XamlRoot yet, or one is already up).
+            // This runs from the selection guard's own catch block, so letting it throw would
+            // re-enter that handler. The pane already carries the reason - degrade to a toast.
+            _toasts.Show(error.Message);
+            return;
+        }
+
+        if (!actOnIt) return;
+
+        if (error.Kind is ErrorKind.NeedsReconfiguration or ErrorKind.PermissionDenied)
+        {
+            EditMachineRequested?.Invoke();
+            return;
+        }
+
+        // Not awaited on purpose: let this dialog finish closing before a retry can open
+        // another one - WinUI allows only a single ContentDialog at a time.
+        _ = RefreshForSelectedAsync();
+    }
+
     private async Task GuardedMachineChangeAsync(MachineItemViewModel? value)
     {
         try
@@ -102,6 +150,7 @@ public sealed partial class FilesViewModel : ObservableObject
             ConnectionStatusText = "Not connected";
             BlockedText = $"Couldn't connect: {ex.Message}";
             NotifyConsoleState();
+            await ReportConnectionFailureAsync(Error.Unexpected(BlockedText));
         }
     }
 
@@ -127,17 +176,24 @@ public sealed partial class FilesViewModel : ObservableObject
 
         // Build the SFTP connection (reveals the DPAPI secret only transiently).
         var info = await _connections.CreateAsync(machine.Id, CancellationToken.None);
-        if (!ReferenceEquals(SelectedMachine, machine)) return; // user switched away \u2014 drop stale result
+        if (!ReferenceEquals(SelectedMachine, machine))
+        {
+            // User switched away - drop the stale result, but the revealed secret is ours
+            // to clear either way; returning straight out leaves it in memory until GC.
+            info?.Secret?.Dispose();
+            return;
+        }
         if (info is null || info.Secret is null)
         {
             ConnectionStatusText = "Not connected";
             BlockedText = $"Add {model.Name}\u2019s username and password in Edit so Deskpin can sign in over SFTP.";
             NotifyConsoleState();
+            await ReportConnectionFailureAsync(Error.NeedsReconfiguration(BlockedText));
             return;
         }
 
         _transfers.SetRemoteTarget(info.Connection, info.Secret);
-        var home = await _transfers.GetRemoteHomeAsync(CancellationToken.None);
+        var home = await _transfers.ConnectRemoteAsync(CancellationToken.None);
         info.Secret.Dispose();
 
         if (!ReferenceEquals(SelectedMachine, machine)) return; // switched away during connect \u2014 ignore
@@ -146,6 +202,7 @@ public sealed partial class FilesViewModel : ObservableObject
             ConnectionStatusText = "Not connected";
             BlockedText = home.Error!.Message;
             NotifyConsoleState();
+            await ReportConnectionFailureAsync(home.Error);
             return;
         }
 

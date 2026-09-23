@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using RdpManager.Application.Common;
 using RdpManager.Application.Files;
 using Renci.SshNet;
 using Renci.SshNet.Common;
@@ -172,7 +173,13 @@ public sealed class SftpRemoteFileSystem : IRemoteFileSystem, IDisposable
 
     // ── Connection lifecycle ─────────────────────────────────────────────────
 
-    private SftpClient EnsureConnected()
+    /// <summary>
+    /// Connects (or reuses the open session) and reports expected outcomes - no saved password,
+    /// a rejected sign-in, an unreachable host - as an <see cref="Error"/>. Nothing here throws
+    /// for those: they are everyday results of picking a machine, and raising an exception for
+    /// them broke every debugger session and buried the real reason under a stack trace.
+    /// </summary>
+    private (SftpClient? Client, Error? Error) TryConnectCore()
     {
         // Runs off the UI thread (callers wrap in Task.Run). Snapshot the target under the lock,
         // but do the blocking Connect() OUTSIDE it so a UI-thread SetTarget never waits on us.
@@ -180,11 +187,12 @@ public sealed class SftpRemoteFileSystem : IRemoteFileSystem, IDisposable
         byte[] passwordBytes;
         lock (_gate)
         {
-            if (_client is { IsConnected: true }) return _client;
-            target = _target ?? throw new InvalidOperationException("Select a machine first.");
+            if (_client is { IsConnected: true }) return (_client, null);
+            if (_target is null) return (null, Error.Validation("Select a machine first."));
+            target = _target;
             if (_password is null)
-                throw new UnauthorizedAccessException(
-                    $"No saved password for {target.Username}@{target.Host}. Add it in Edit so Deskpin can sign in over SFTP.");
+                return (null, new Error(ErrorKind.NeedsReconfiguration, "credentials_missing",
+                    $"No saved password for {target.Username}@{target.Host}. Add it in Edit so Deskpin can sign in over SFTP."));
             passwordBytes = _password;
         }
 
@@ -199,19 +207,27 @@ public sealed class SftpRemoteFileSystem : IRemoteFileSystem, IDisposable
             };
             client.Connect();
         }
-        catch (Renci.SshNet.Common.SshAuthenticationException)
+        catch (Renci.SshNet.Common.SshAuthenticationException ex)
         {
-            throw new UnauthorizedAccessException(
-                $"SFTP sign-in to {target.Host} was rejected — check {target.Username}'s password in Edit.");
+            // SSH.NET's own message is the only thing that tells the two failures apart:
+            // "Permission denied (password)" = the password is wrong, while "No suitable
+            // authentication method found (publickey,keyboard-interactive)" = the server
+            // won't take the password method at all and no password will ever work.
+            // The Error carries the friendly line; the log keeps the server's own words.
+            _logger.LogWarning(ex, "SFTP auth rejected: {User}@{Host}:{Port}",
+                target.Username, target.Host, target.Port);
+            return (null, new Error(ErrorKind.PermissionDenied, "permission_denied",
+                $"SFTP sign-in to {target.Host} was rejected — check {target.Username}'s password in Edit."));
         }
         catch (Exception ex) when (ex is System.Net.Sockets.SocketException
                                       or Renci.SshNet.Common.SshConnectionException
                                       or Renci.SshNet.Common.SshOperationTimeoutException)
         {
-            throw new IOException(
+            _logger.LogWarning(ex, "SFTP unreachable: {Host}:{Port}", target.Host, target.Port);
+            return (null, new Error(ErrorKind.Unreachable, "unreachable",
                 $"No SSH/SFTP server answered at {target.Host}:{target.Port}. " +
                 "On Windows, enable OpenSSH Server (right-click the machine → “Enable file access” for the command); " +
-                "on Linux/macOS make sure the SSH service is running and the port is open.", ex);
+                "on Linux/macOS make sure the SSH service is running and the port is open."));
         }
         finally
         {
@@ -225,13 +241,42 @@ public sealed class SftpRemoteFileSystem : IRemoteFileSystem, IDisposable
             if (!ReferenceEquals(_target, target))
             {
                 _ = Task.Run(() => SafeDispose(client));
-                throw new IOException("The machine selection changed while connecting.");
+                return (null, Error.Cancelled());
             }
             _client = client;
             _logger.LogInformation("SFTP connected: {User}@{Host}:{Port} (home {Home})",
                 target.Username, target.Host, target.Port, client.WorkingDirectory);
-            return client;
+            return (client, null);
         }
+    }
+
+    public Task<Result<string?>> TryConnectAsync(CancellationToken ct) =>
+        Task.Run(() =>
+        {
+            var (client, error) = TryConnectCore();
+            return client is null
+                ? Result<string?>.Failure(error!)
+                : Result<string?>.Success(client.WorkingDirectory);
+        }, ct);
+
+    /// <summary>
+    /// The exception-throwing face of <see cref="TryConnectCore"/>, kept for the browsing and
+    /// transfer operations that still signal through exceptions. Those all run after a session
+    /// is already open, so in practice this only throws when one drops mid-task.
+    /// </summary>
+    private SftpClient EnsureConnected()
+    {
+        var (client, error) = TryConnectCore();
+        if (client is not null) return client;
+
+        throw error!.Kind switch
+        {
+            ErrorKind.NeedsReconfiguration => new RemoteCredentialsMissingException(error.Message),
+            ErrorKind.PermissionDenied => new UnauthorizedAccessException(error.Message),
+            ErrorKind.Unreachable => new RemoteUnreachableException(error.Message),
+            ErrorKind.Validation => (Exception)new InvalidOperationException(error.Message),
+            _ => new IOException(error.Message),
+        };
     }
 
     private static void SafeDispose(SftpClient client)
