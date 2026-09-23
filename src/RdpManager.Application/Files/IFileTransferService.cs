@@ -38,6 +38,13 @@ public interface IFileTransferService
     /// <summary>The user's home directory on the connected remote, or a failure. Used to land the pane in home.</summary>
     Task<Result<string?>> GetRemoteHomeAsync(CancellationToken ct);
 
+    /// <summary>
+    /// Opens the SFTP session for the current target and returns its home directory. A wrong
+    /// password or an unreachable host comes back as an <see cref="Error"/> without an exception
+    /// ever being raised - prefer this over <see cref="GetRemoteHomeAsync"/> when connecting.
+    /// </summary>
+    Task<Result<string?>> ConnectRemoteAsync(CancellationToken ct);
+
     /// <summary>Path rules for each side, so the UI parses/renders paths correctly (Windows local, POSIX remote).</summary>
     IPathModel LocalPathModel { get; }
     IPathModel RemotePathModel { get; }

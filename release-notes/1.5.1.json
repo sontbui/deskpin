@@ -1,0 +1,32 @@
+{
+  "title": "Deskpin 1.5.1 - Find and sort files, and connection errors that say what went wrong",
+  "description": [
+    {
+      "content": "Filter box on both file panes. Type to narrow the folder you are looking at; it matches anywhere in the name, ignores case, and clears itself when you move to another folder. Refreshing, renaming or deleting keeps what you typed."
+    },
+    {
+      "content": "Sortable columns. Click NAME, SIZE or MODIFIED to sort, click the same header again to reverse it, and an arrow marks the column in use. Folders and files rank together - every row is ordered by the column you clicked, nothing is hoisted to the top."
+    },
+    {
+      "content": "A \"No matches\" state with a Clear filter button, so an empty pane tells you whether the folder is really empty or your filter is just too narrow."
+    },
+    {
+      "content": "Failing to open a machine now opens a dialog that names the failure and offers the fix: \"Edit machine\" when the sign-in details are missing or were rejected, \"Try again\" when the host could not be reached. The pane keeps the reason after you close it."
+    },
+    {
+      "content": "Connection problems are reported accurately. A machine that is switched off or has no SSH service was previously filed as an unexpected error, and the useful explanation of a rejected sign-in was replaced by a generic access-denied message."
+    },
+    {
+      "content": "Selecting a machine whose sign-in fails no longer stalls the app. A wrong password is an ordinary outcome of picking a machine, so connecting now returns it as a result instead of raising an exception."
+    },
+    {
+      "content": "SSH.NET updated to 2026.0.0. This closes the Terrapin vulnerability (CVE-2023-48795) present in the 2023.0.1 build shipped until now."
+    },
+    {
+      "content": "A rejected sign-in now records the server's own words in the log, which tells a wrong password apart from a server that refuses password authentication altogether."
+    },
+    {
+      "content": "The revealed password is now cleared when you switch machines while a connection is still being set up."
+    }
+  ]
+}

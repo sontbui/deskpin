@@ -38,6 +38,8 @@ public sealed partial class MachinesFilesPage : Page
     {
         Vm.Master.ConfigureDisplayRequested -= OnConfigureDisplayRequested;
         Vm.Master.ConfigureDisplayRequested += OnConfigureDisplayRequested;
+        Vm.Console.EditMachineRequested -= OnEditMachineRequested;
+        Vm.Console.EditMachineRequested += OnEditMachineRequested;
         try
         {
             await Vm.LoadCommand.ExecuteAsync(CancellationToken.None);
@@ -49,7 +51,23 @@ public sealed partial class MachinesFilesPage : Page
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
-        => Vm.Master.ConfigureDisplayRequested -= OnConfigureDisplayRequested;
+    {
+        Vm.Master.ConfigureDisplayRequested -= OnConfigureDisplayRequested;
+        Vm.Console.EditMachineRequested -= OnEditMachineRequested;
+    }
+
+    /// <summary>"Edit machine" on a failed-connection dialog: straight into this machine's settings.</summary>
+    private async void OnEditMachineRequested()
+    {
+        try
+        {
+            await EditSelectedAsync();
+        }
+        catch (System.Exception ex)
+        {
+            _toasts.Show($"Couldn't open the machine's settings: {ex.Message}");
+        }
+    }
 
     // ── Machine master ──────────────────────────────────────────────────────
 

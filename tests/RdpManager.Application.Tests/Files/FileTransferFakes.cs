@@ -1,3 +1,4 @@
+using RdpManager.Application.Common;
 using RdpManager.Application.Files;
 using RdpManager.Domain.Abstractions;
 
@@ -143,6 +144,11 @@ internal sealed class FakeRemoteFileSystem : FakeFileSystemBase, IRemoteFileSyst
     public string Home = @"C:\Users\me";
     public void SetTarget(RemoteConnection? connection, System.Security.SecureString? secret) => Target = connection;
     public Task<string?> GetHomeDirectoryAsync(CancellationToken ct) => Task.FromResult<string?>(Home);
+
+    /// <summary>When set, TryConnectAsync reports this instead of connecting (sign-in/reachability tests).</summary>
+    public Error? ConnectError;
+    public Task<Result<string?>> TryConnectAsync(CancellationToken ct) => Task.FromResult(
+        ConnectError is null ? Result<string?>.Success(Home) : Result<string?>.Failure(ConnectError));
 
     public int ChunkSize = 4;
     /// <summary>Copies that should fail with "Connection reset" before one succeeds (retry tests).</summary>

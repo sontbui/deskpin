@@ -68,6 +68,15 @@ public interface IRemoteFileSystem : IFileSystemBrowser
     /// <summary>The user's home directory as reported by the server after connecting (null if not connected).</summary>
     Task<string?> GetHomeDirectoryAsync(CancellationToken ct);
 
+    /// <summary>
+    /// Connects (or reuses the open session) and returns the home directory, reporting the
+    /// expected outcomes - no saved credentials, a rejected password, an unreachable host -
+    /// as an <see cref="Common.Error"/> instead of throwing. Selecting a machine whose password
+    /// is wrong is an everyday outcome, not a fault, and <see cref="Common.Result{T}"/> exists
+    /// precisely so those stay data. Prefer this over <see cref="GetHomeDirectoryAsync"/>.
+    /// </summary>
+    Task<Common.Result<string?>> TryConnectAsync(CancellationToken ct);
+
     /// <summary>Upload: writes <paramref name="source"/> to <paramref name="remotePath"/>, replacing any existing file.</summary>
     Task CopyInAsync(Stream source, string remotePath, IProgress<long>? progress, CancellationToken ct);
 

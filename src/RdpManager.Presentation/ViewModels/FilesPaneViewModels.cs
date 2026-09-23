@@ -47,6 +47,14 @@ public sealed class BreadcrumbItemViewModel
     public bool ShowSeparator => !IsLast;
 }
 
+/// <summary>Which column a pane is ordered by.</summary>
+public enum FileSortColumn
+{
+    Name,
+    Size,
+    Modified
+}
+
 /// <summary>
 /// One side of the dual-pane commander: breadcrumb, editable address bar with go-to-path,
 /// listing with multi-select, and the friendly failure states (empty / access denied / error).
@@ -56,6 +64,9 @@ public sealed partial class PaneViewModel : ObservableObject
 {
     private readonly IFileTransferService _service;
     private string? _lastGoodPath;
+
+    /// <summary>Everything the last listing returned; <see cref="Items"/> is the filtered+sorted view of it.</summary>
+    private readonly List<FileEntryViewModel> _allItems = new();
 
     /// <summary>Path rules for this pane — Windows for local, POSIX for a remote SFTP host.</summary>
     public RdpManager.Application.Files.IPathModel PathModel { get; set; } = RdpManager.Application.Files.WindowsPathModel.Instance;
@@ -85,6 +96,86 @@ public sealed partial class PaneViewModel : ObservableObject
     [ObservableProperty] private bool _hasError;
     [ObservableProperty] private string _errorText = string.Empty;
 
+    /// <summary>Live filter over the current directory only — never re-lists, never walks subfolders.</summary>
+    [ObservableProperty] private string _filterText = string.Empty;
+
+    /// <summary>True when the directory has rows but the filter matched none of them.</summary>
+    [ObservableProperty] private bool _isFilterEmpty;
+
+    [ObservableProperty] private FileSortColumn _sortColumn = FileSortColumn.Name;
+    [ObservableProperty] private bool _sortDescending;
+
+    /// <summary>Header arrows: only the active column shows one. "" up, "" down.</summary>
+    public string NameSortGlyph => GlyphFor(FileSortColumn.Name);
+    public string SizeSortGlyph => GlyphFor(FileSortColumn.Size);
+    public string ModifiedSortGlyph => GlyphFor(FileSortColumn.Modified);
+
+    private string GlyphFor(FileSortColumn column) =>
+        SortColumn != column ? string.Empty : SortDescending ? "\uE70D" : "\uE70E";
+
+    partial void OnFilterTextChanged(string value) => ApplyView();
+
+    /// <summary>Click a header: same column flips direction, a new column starts ascending.</summary>
+    [RelayCommand]
+    public void SortBy(string column)
+    {
+        if (!Enum.TryParse<FileSortColumn>(column, ignoreCase: true, out var parsed)) return;
+
+        if (SortColumn == parsed)
+        {
+            SortDescending = !SortDescending;
+        }
+        else
+        {
+            SortColumn = parsed;
+            SortDescending = false;
+        }
+
+        OnPropertyChanged(nameof(NameSortGlyph));
+        OnPropertyChanged(nameof(SizeSortGlyph));
+        OnPropertyChanged(nameof(ModifiedSortGlyph));
+        ApplyView();
+    }
+
+    [RelayCommand]
+    public void ClearFilter() => FilterText = string.Empty;
+
+    /// <summary>
+    /// Rebuilds <see cref="Items"/> from <see cref="_allItems"/>: filter first, then sort.
+    /// Folders are not hoisted - every row competes on the sorted column alone.
+    /// </summary>
+    private void ApplyView()
+    {
+        var filter = FilterText?.Trim() ?? string.Empty;
+        IEnumerable<FileEntryViewModel> query = _allItems;
+
+        if (filter.Length > 0)
+            query = query.Where(i => i.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
+
+        // Folders and files rank together: a sort the user asked for should order every row by
+        // the column they clicked, not park one kind of row above the other. Name breaks ties.
+        var ordered = SortColumn switch
+        {
+            FileSortColumn.Size => SortDescending
+                ? query.OrderByDescending(i => i.Entry.SizeBytes).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+                : query.OrderBy(i => i.Entry.SizeBytes).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase),
+            FileSortColumn.Modified => SortDescending
+                ? query.OrderByDescending(i => i.Entry.ModifiedAt ?? DateTimeOffset.MinValue).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+                : query.OrderBy(i => i.Entry.ModifiedAt ?? DateTimeOffset.MinValue).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase),
+            _ => SortDescending
+                ? query.OrderByDescending(i => i.Name, StringComparer.OrdinalIgnoreCase)
+                : query.OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
+        };
+
+        Items.Clear();
+        foreach (var item in ordered)
+            Items.Add(item);
+
+        IsEmpty = _allItems.Count == 0;
+        IsFilterEmpty = _allItems.Count > 0 && Items.Count == 0;
+        SetSelection(Array.Empty<FileEntryViewModel>());
+    }
+
     /// <summary>Rows currently selected in the ListView (the page keeps this in sync).</summary>
     public IReadOnlyList<FileEntryViewModel> SelectedEntries { get; private set; } = Array.Empty<FileEntryViewModel>();
 
@@ -108,6 +199,8 @@ public sealed partial class PaneViewModel : ObservableObject
             return;
         }
 
+        var previousPath = CurrentPath;
+
         IsLoading = true;
         HasError = false;
         try
@@ -120,7 +213,9 @@ public sealed partial class PaneViewModel : ObservableObject
                     // Friendly pane state, not a crash — with a way back.
                     CurrentPath = normalized.Value;
                     UpdateCrumbs(normalized.Value);
+                    _allItems.Clear();
                     Items.Clear();
+                    IsFilterEmpty = false;
                     SetSelection(Array.Empty<FileEntryViewModel>());
                     IsAccessDenied = true;
                     AccessDeniedText = $"You don't have permission to read {PathModel.GetFileName(normalized.Value)}. " +
@@ -139,11 +234,15 @@ public sealed partial class PaneViewModel : ObservableObject
             IsEditingPath = false;
             UpdateCrumbs(normalized.Value);
 
-            Items.Clear();
+            _allItems.Clear();
             foreach (var entry in result.Value)
-                Items.Add(new FileEntryViewModel(entry));
-            IsEmpty = Items.Count == 0;
-            SetSelection(Array.Empty<FileEntryViewModel>());
+                _allItems.Add(new FileEntryViewModel(entry));
+
+            // A filter belongs to the folder it was typed in — landing somewhere new starts clean.
+            if (!string.Equals(previousPath, normalized.Value, StringComparison.OrdinalIgnoreCase) && FilterText.Length > 0)
+                FilterText = string.Empty;   // setter re-runs ApplyView
+            else
+                ApplyView();
         }
         finally
         {

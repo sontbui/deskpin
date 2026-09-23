@@ -5,6 +5,26 @@ All notable changes to Deskpin are documented here. The version numbers follow
 
 The CI release workflow reads the section matching the pushed tag and uses it as the GitHub Release body.
 
+## [1.5.1] - 2026-09-23
+
+### Added
+- **Find a file in the pane you are looking at.** Both panes gained a filter box: it narrows the current listing as you type, matches anywhere in the name, ignores case, and clears itself when you navigate elsewhere. Refresh, rename and delete keep the filter. No extra SFTP round trip - it only filters rows already listed.
+- **Sortable columns.** NAME, SIZE and MODIFIED are now buttons: click to sort, click again to reverse, and an arrow marks the active column. Folders and files rank together; the column you clicked decides every row's position, with name as the tie-breaker.
+- **A "No matches" state.** An empty pane now distinguishes an empty folder from a filter that matched nothing, and offers a Clear filter button.
+
+### Changed
+- **A machine that will not open now says so, and offers the fix.** Instead of only a line in the pane, a dialog names the failure - sign-in details missing, sign-in rejected, host unreachable - and carries the matching action: "Edit machine" or "Try again". The pane still keeps the reason after the dialog is dismissed.
+
+### Fixed
+- **Selecting a machine with a bad password no longer stalls the app.** A rejected sign-in is an everyday outcome of clicking a machine, not a fault, so connecting now returns it as a result. The connect path raises no exception at all, which also stops a debugger breaking on every failed selection.
+- **Network failures were filed as unexpected errors.** A switched-off machine, a closed port and a stopped SSH service all mapped to "unexpected", making a routine condition indistinguishable from a defect. They are now reported as unreachable.
+- **The helpful sign-in message was being thrown away.** The failure carries "check <user>'s password in Edit"; the error mapping replaced it with a generic "Access to the remote home directory was denied" before it reached the screen.
+- **A rejected sign-in now logs the server's own reason**, which separates a wrong password from a server that refuses password authentication entirely - previously both surfaced identically.
+- **The revealed password is now cleared** when the machine selection changes while a connection is still being established.
+
+### Security
+- **SSH.NET 2023.0.1 to 2026.0.0.** The old build carries the Terrapin prefix-truncation vulnerability (CVE-2023-48795, GHSA-mggc-4xg6-vcxf) in the SSH transport that every file transfer runs over.
+
 ## [1.3.2] - 2026-08-12
 
 ### Changed

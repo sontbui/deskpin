@@ -246,16 +246,62 @@
                         </StackPanel>
                     </Grid>
 
-                    <Grid Grid.Row="1" Padding="16,4" ColumnSpacing="8"
-                          BorderThickness="0,0,0,1" BorderBrush="{StaticResource DividerBrush}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="80" />
-                            <ColumnDefinition Width="96" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="NAME" Style="{StaticResource KickerTextStyle}" />
-                        <TextBlock Grid.Column="1" Text="SIZE" Style="{StaticResource KickerTextStyle}" HorizontalAlignment="Right" />
-                        <TextBlock Grid.Column="2" Text="MODIFIED" Style="{StaticResource KickerTextStyle}" HorizontalAlignment="Right" />
+                    <Grid Grid.Row="1" BorderThickness="0,0,0,1" BorderBrush="{StaticResource DividerBrush}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- filter: narrows the rows already listed, never re-reads the folder -->
+                        <Grid Padding="13,7,10,5" ColumnSpacing="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource NocturneTextBoxStyle}" MinHeight="28" FontSize="12"
+                                     PlaceholderText="Filter this folder&#x2026;"
+                                     Text="{x:Bind Vm.Console.LocalPane.FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Grid.Column="1" Style="{StaticResource GhostButtonStyle}" Padding="6"
+                                    Command="{x:Bind Vm.Console.LocalPane.ClearFilterCommand}"
+                                    ToolTipService.ToolTip="Clear filter">
+                                <FontIcon Glyph="&#xE711;" FontSize="11" Foreground="{StaticResource Neutral500Brush}" />
+                            </Button>
+                        </Grid>
+
+                        <Grid Grid.Row="1" Padding="10,0,10,2" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="96" />
+                            </Grid.ColumnDefinitions>
+                            <Button Style="{StaticResource GhostButtonStyle}" Padding="6,3" HorizontalAlignment="Left"
+                                    Command="{x:Bind Vm.Console.LocalPane.SortByCommand}" CommandParameter="Name"
+                                    ToolTipService.ToolTip="Sort by name">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="NAME" Style="{StaticResource KickerTextStyle}" />
+                                    <FontIcon Glyph="{x:Bind Vm.Console.LocalPane.NameSortGlyph, Mode=OneWay}" FontSize="9"
+                                              VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButtonStyle}" Padding="6,3" HorizontalAlignment="Right"
+                                    Command="{x:Bind Vm.Console.LocalPane.SortByCommand}" CommandParameter="Size"
+                                    ToolTipService.ToolTip="Sort by size">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="SIZE" Style="{StaticResource KickerTextStyle}" />
+                                    <FontIcon Glyph="{x:Bind Vm.Console.LocalPane.SizeSortGlyph, Mode=OneWay}" FontSize="9"
+                                              VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="2" Style="{StaticResource GhostButtonStyle}" Padding="6,3" HorizontalAlignment="Right"
+                                    Command="{x:Bind Vm.Console.LocalPane.SortByCommand}" CommandParameter="Modified"
+                                    ToolTipService.ToolTip="Sort by modified date">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="MODIFIED" Style="{StaticResource KickerTextStyle}" />
+                                    <FontIcon Glyph="{x:Bind Vm.Console.LocalPane.ModifiedSortGlyph, Mode=OneWay}" FontSize="9"
+                                              VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
                     </Grid>
 
                     <Grid Grid.Row="2">
@@ -323,6 +369,16 @@
                             <TextBlock Text="This folder is empty" Style="{StaticResource TitleTextStyle}" FontSize="14" HorizontalAlignment="Center" />
                             <TextBlock Text="{x:Bind Vm.Console.LocalPane.EmptyText}" Style="{StaticResource MutedTextStyle}"
                                        TextWrapping="Wrap" MaxWidth="260" TextAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Padding="24"
+                                    Visibility="{x:Bind Vm.Console.LocalPane.IsFilterEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                            <FontIcon Glyph="&#xE721;" FontSize="26" Foreground="{StaticResource Neutral500Brush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="No matches" Style="{StaticResource TitleTextStyle}" FontSize="14" HorizontalAlignment="Center" />
+                            <TextBlock Text="Nothing in this folder matches the filter." Style="{StaticResource MutedTextStyle}"
+                                       TextWrapping="Wrap" MaxWidth="260" TextAlignment="Center" />
+                            <Button Content="Clear filter" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Center"
+                                    Command="{x:Bind Vm.Console.LocalPane.ClearFilterCommand}" />
                         </StackPanel>
 
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Padding="24"
@@ -434,16 +490,62 @@
                         </StackPanel>
                     </Grid>
 
-                    <Grid Grid.Row="1" Padding="16,4" ColumnSpacing="8"
-                          BorderThickness="0,0,0,1" BorderBrush="{StaticResource DividerBrush}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="80" />
-                            <ColumnDefinition Width="96" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="NAME" Style="{StaticResource KickerTextStyle}" />
-                        <TextBlock Grid.Column="1" Text="SIZE" Style="{StaticResource KickerTextStyle}" HorizontalAlignment="Right" />
-                        <TextBlock Grid.Column="2" Text="MODIFIED" Style="{StaticResource KickerTextStyle}" HorizontalAlignment="Right" />
+                    <Grid Grid.Row="1" BorderThickness="0,0,0,1" BorderBrush="{StaticResource DividerBrush}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- filter: narrows the rows already listed, never re-reads the folder -->
+                        <Grid Padding="13,7,10,5" ColumnSpacing="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Style="{StaticResource NocturneTextBoxStyle}" MinHeight="28" FontSize="12"
+                                     PlaceholderText="Filter this folder&#x2026;"
+                                     Text="{x:Bind Vm.Console.RemotePane.FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Grid.Column="1" Style="{StaticResource GhostButtonStyle}" Padding="6"
+                                    Command="{x:Bind Vm.Console.RemotePane.ClearFilterCommand}"
+                                    ToolTipService.ToolTip="Clear filter">
+                                <FontIcon Glyph="&#xE711;" FontSize="11" Foreground="{StaticResource Neutral500Brush}" />
+                            </Button>
+                        </Grid>
+
+                        <Grid Grid.Row="1" Padding="10,0,10,2" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="96" />
+                            </Grid.ColumnDefinitions>
+                            <Button Style="{StaticResource GhostButtonStyle}" Padding="6,3" HorizontalAlignment="Left"
+                                    Command="{x:Bind Vm.Console.RemotePane.SortByCommand}" CommandParameter="Name"
+                                    ToolTipService.ToolTip="Sort by name">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="NAME" Style="{StaticResource KickerTextStyle}" />
+                                    <FontIcon Glyph="{x:Bind Vm.Console.RemotePane.NameSortGlyph, Mode=OneWay}" FontSize="9"
+                                              VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButtonStyle}" Padding="6,3" HorizontalAlignment="Right"
+                                    Command="{x:Bind Vm.Console.RemotePane.SortByCommand}" CommandParameter="Size"
+                                    ToolTipService.ToolTip="Sort by size">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="SIZE" Style="{StaticResource KickerTextStyle}" />
+                                    <FontIcon Glyph="{x:Bind Vm.Console.RemotePane.SizeSortGlyph, Mode=OneWay}" FontSize="9"
+                                              VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="2" Style="{StaticResource GhostButtonStyle}" Padding="6,3" HorizontalAlignment="Right"
+                                    Command="{x:Bind Vm.Console.RemotePane.SortByCommand}" CommandParameter="Modified"
+                                    ToolTipService.ToolTip="Sort by modified date">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="MODIFIED" Style="{StaticResource KickerTextStyle}" />
+                                    <FontIcon Glyph="{x:Bind Vm.Console.RemotePane.ModifiedSortGlyph, Mode=OneWay}" FontSize="9"
+                                              VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
                     </Grid>
 
                     <Grid Grid.Row="2">
@@ -511,6 +613,16 @@
                             <TextBlock Text="This folder is empty" Style="{StaticResource TitleTextStyle}" FontSize="14" HorizontalAlignment="Center" />
                             <TextBlock Text="{x:Bind Vm.Console.RemotePane.EmptyText}" Style="{StaticResource MutedTextStyle}"
                                        TextWrapping="Wrap" MaxWidth="260" TextAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" Padding="24"
+                                    Visibility="{x:Bind Vm.Console.RemotePane.IsFilterEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                            <FontIcon Glyph="&#xE721;" FontSize="26" Foreground="{StaticResource Neutral500Brush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="No matches" Style="{StaticResource TitleTextStyle}" FontSize="14" HorizontalAlignment="Center" />
+                            <TextBlock Text="Nothing in this folder matches the filter." Style="{StaticResource MutedTextStyle}"
+                                       TextWrapping="Wrap" MaxWidth="260" TextAlignment="Center" />
+                            <Button Content="Clear filter" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Center"
+                                    Command="{x:Bind Vm.Console.RemotePane.ClearFilterCommand}" />
                         </StackPanel>
 
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" Padding="24"
